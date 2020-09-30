@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="源码阅读,java,定时任务," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="前面的话这里只对quartz的源码做一个整体的梳理，关于quartz的整体结构，百度Google之，一堆一堆的。 具体阅读quartz中主要围绕3个东东搞各种逻辑。分别是调度器（Scheduler），触发器（trigger）和任务（job）。调度器去获取触发器，触发器指定任务的调度时间，调度策略，调度状态，优先级，开始时间，结束时间等信息。任务就是具体的业务逻辑实现。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="quartz源码阅读">
+<meta property="og:url" content="http://fuyanzhang.github.io/2020/07/17/quartz%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/index.html">
+<meta property="og:site_name" content="普通的猪">
+<meta property="og:description" content="前面的话这里只对quartz的源码做一个整体的梳理，关于quartz的整体结构，百度Google之，一堆一堆的。 具体阅读quartz中主要围绕3个东东搞各种逻辑。分别是调度器（Scheduler），触发器（trigger）和任务（job）。调度器去获取触发器，触发器指定任务的调度时间，调度策略，调度状态，优先级，开始时间，结束时间等信息。任务就是具体的业务逻辑实现。">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/11942209-865598eb7cbf6f1c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2020-07-17T10:38:23.000Z">
+<meta property="article:modified_time" content="2020-08-24T12:06:15.585Z">
+<meta property="article:author" content="yanzhang">
+<meta property="article:tag" content="源码阅读">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="定时任务">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/11942209-865598eb7cbf6f1c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://fuyanzhang.github.io/2020/07/17/quartz源码阅读/"/>
+
+
+
+
+
+  <title>quartz源码阅读 | 普通的猪</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">普通的猪</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">一个程序员的点滴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/07/17/quartz%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yanzhang">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="普通的猪">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">quartz源码阅读</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-07-17T18:38:23+08:00">
+                2020-07-17
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" itemprop="url" rel="index">
+                    <span itemprop="name">源码阅读</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="前面的话"><a href="#前面的话" class="headerlink" title="前面的话"></a>前面的话</h2><p>这里只对quartz的源码做一个整体的梳理，关于quartz的整体结构，百度Google之，一堆一堆的。</p>
+<h2 id="具体阅读"><a href="#具体阅读" class="headerlink" title="具体阅读"></a>具体阅读</h2><p>quartz中主要围绕3个东东搞各种逻辑。分别是调度器（Scheduler），触发器（trigger）和任务（job）。调度器去获取触发器，触发器指定任务的调度时间，调度策略，调度状态，优先级，开始时间，结束时间等信息。任务就是具体的业务逻辑实现。</p>
+<a id="more"></a>
+<h3 id="一个栗子进入代码"><a href="#一个栗子进入代码" class="headerlink" title="一个栗子进入代码"></a>一个栗子进入代码</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">    SchedulerFactory factory &#x3D; new StdSchedulerFactory(&quot;test_quartz.properties&quot;);</span><br><span class="line">    Scheduler scheduler &#x3D; factory.getScheduler();</span><br><span class="line">    scheduler.start();</span><br><span class="line">    Trigger t &#x3D; newTrigger().withIdentity(&quot;t1&quot;,&quot;g1&quot;).startAt(new Date(1466746025000l)).withSchedule(simpleSchedule().withMisfireHandlingInstructionNextWithRemainingCount().withRepeatCount(0)).build();</span><br><span class="line">    JobDetail job &#x3D; newJob(TestJob.class).withIdentity(&quot;myJob1&quot;, &quot;g1&quot;).build();</span><br><span class="line">    scheduler.scheduleJob(job,t);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public class TestJob implements Job &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void execute(JobExecutionContext context) throws JobExecutionException &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            Thread.sleep(20000);</span><br><span class="line">            System.out.println(context.getTrigger().getKey()+&quot;执行成功！！！&quot;);</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面两段代码就是一个简单的任务的写法。<br>主要过程如下：<br>1、首先通过调度器工厂获取一个调度器。启动调度器。<br>2、定义触发器。<br>3、定义任务。<br>4、通过调度器将触发器和任务关联起来。<br>首先来看下调度器的初始化。<br>调度器工厂初始化主要是读取配置信息。通过getScheduler方法才是真正的初始化scheduler，里边主要是通过配置信息组装scheduler。这里不是重点，一笔带过。【注：在调度器组装的时候，顺便启动了任务的执行线程<br><code>qs = new QuartzScheduler(rsrcs, idleWaitTime, dbFailureRetry);</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public QuartzScheduler(QuartzSchedulerResources resources, long idleWaitTime, @Deprecated long dbRetryInterval)</span><br><span class="line">        throws SchedulerException &#123;</span><br><span class="line">        this.resources &#x3D; resources;</span><br><span class="line">        if (resources.getJobStore() instanceof JobListener) &#123;</span><br><span class="line">            addInternalJobListener((JobListener)resources.getJobStore());</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        this.schedThread &#x3D; new QuartzSchedulerThread(this, resources);</span><br><span class="line">        ThreadExecutor schedThreadExecutor &#x3D; resources.getThreadExecutor();</span><br><span class="line">        schedThreadExecutor.execute(this.schedThread);</span><br></pre></td></tr></table></figure>
+<p>，只是在线程启动后一直等待，知道调度器调用start方法<br>  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">while (paused &amp;&amp; !halted.get()) &#123;</span><br><span class="line">                       try &#123;</span><br><span class="line">                           &#x2F;&#x2F; wait until togglePause(false) is called...</span><br><span class="line">                           sigLock.wait(1000L);</span><br><span class="line">                       &#125; catch (InterruptedException ignore) &#123;</span><br><span class="line">                       &#125;</span><br></pre></td></tr></table></figure><br>】</p>
+<p>下面试调度器的启动。</p>
+<h3 id="调度器启动过程"><a href="#调度器启动过程" class="headerlink" title="调度器启动过程"></a>调度器启动过程</h3><p>quartz支持集群模式下的任务调度。任务持久化采用DB的方式。<br>这里主要涉及集群模式下的任务执行过程。<br>启动过程代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">public void start() throws SchedulerException &#123;</span><br><span class="line">       if (shuttingDown|| closed) &#123;</span><br><span class="line">           throw new SchedulerException(</span><br><span class="line">                   &quot;The Scheduler cannot be restarted after shutdown() has been called.&quot;);</span><br><span class="line">       &#125;</span><br><span class="line">       notifySchedulerListenersStarting();</span><br><span class="line">       if (initialStart &#x3D;&#x3D; null) &#123;</span><br><span class="line">           initialStart &#x3D; new Date();</span><br><span class="line">   &#x2F;&#x2F;调度器第一次启动</span><br><span class="line">           this.resources.getJobStore().schedulerStarted();            </span><br><span class="line">           startPlugins();</span><br><span class="line">       &#125; else &#123;</span><br><span class="line">         </span><br><span class="line">           resources.getJobStore().schedulerResumed();</span><br><span class="line">       &#125;</span><br><span class="line">   &#x2F;&#x2F;将执行线程唤醒。用于获取触发器，触发任务</span><br><span class="line">       schedThread.togglePause(false);</span><br><span class="line">       getLog().info(</span><br><span class="line">               &quot;Scheduler &quot; + resources.getUniqueIdentifier() + &quot; started.&quot;);        </span><br><span class="line">       notifySchedulerListenersStarted();</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">public void schedulerStarted() throws SchedulerException &#123;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;如果是集群，启动集群的管理线程，定时检查集群的健康性。</span><br><span class="line">        if (isClustered()) &#123;</span><br><span class="line">            clusterManagementThread &#x3D; new ClusterManager();</span><br><span class="line">            if(initializersLoader !&#x3D; null)</span><br><span class="line">                clusterManagementThread.setContextClassLoader(initializersLoader);</span><br><span class="line">            clusterManagementThread.initialize();</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">  &#x2F;&#x2F;非集群，则恢复调度器宕机前的任务</span><br><span class="line">                recoverJobs();</span><br><span class="line">            &#125; catch (SchedulerException se) &#123;</span><br><span class="line">                throw new SchedulerConfigException(</span><br><span class="line">                        &quot;Failure occured during job recovery.&quot;, se);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">&#x2F;&#x2F;起线程，用于检查是否有任务错过执行时间，若有，则根据不同的策略修改不同的nextfiretime值，以便于工作线程去选择trigger。</span><br><span class="line">        misfireHandler &#x3D; new MisfireHandler();</span><br><span class="line">        if(initializersLoader !&#x3D; null)</span><br><span class="line">            misfireHandler.setContextClassLoader(initializersLoader);</span><br><span class="line">        misfireHandler.initialize();</span><br><span class="line">        schedulerRunning &#x3D; true;</span><br><span class="line">        </span><br><span class="line">        getLog().debug(&quot;JobStore background threads started (as scheduler was started).&quot;);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>下面深入对三大线程做讲解。QuartzSchedulerThread，ClusterManager和MisfireHandler。</p>
+<h4 id="QuartzSchedulerThread"><a href="#QuartzSchedulerThread" class="headerlink" title="QuartzSchedulerThread"></a>QuartzSchedulerThread</h4><p>这个线程是quartz的主要线程，负责调度的。看下代码：<br>run方法很长，这里选取主要的代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">  public void run() &#123;</span><br><span class="line">        int acquiresFailed &#x3D; 0;</span><br><span class="line">        while (!halted.get()) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                synchronized (sigLock) &#123;</span><br><span class="line">                    while (paused &amp;&amp; !halted.get()) &#123;</span><br><span class="line">                        try &#123;</span><br><span class="line">                           &#x2F;&#x2F;scheduler调用start方法前，在此处循环，直到start方法里调用了togglePause方法。</span><br><span class="line">                            sigLock.wait(1000L);</span><br><span class="line">                        &#125; catch (InterruptedException ignore) &#123;</span><br><span class="line">                        &#125;</span><br><span class="line">。。。</span><br><span class="line">                int availThreadCount &#x3D; qsRsrcs.getThreadPool().blockForAvailableThreads();</span><br><span class="line">                if(availThreadCount &gt; 0) &#123; &#x2F;&#x2F; will always be true, due to semantics of blockForAvailableThreads...</span><br><span class="line">                    try &#123;</span><br><span class="line">                      &#x2F;&#x2F;获取当前可以被触发的trigger</span><br><span class="line">                        triggers &#x3D; qsRsrcs.getJobStore().acquireNextTriggers(</span><br><span class="line">                                now + idleWaitTime, Math.min(availThreadCount, qsRsrcs.getMaxBatchSize()), qsRsrcs.getBatchTimeWindow());</span><br><span class="line">                        acquiresFailed &#x3D; 0;</span><br><span class="line">                     。。。</span><br><span class="line"></span><br><span class="line">                        List&lt;TriggerFiredResult&gt; bndles &#x3D; new ArrayList&lt;TriggerFiredResult&gt;();</span><br><span class="line">                        if(goAhead) &#123;</span><br><span class="line">                            try &#123;</span><br><span class="line">                              &#x2F;&#x2F;触发trigger，主要是修改qrtz_trigger表中trigger的状态从acquired状态变成WATTING或者complete状态。并计算下一次执行时间，等待下一次被选中。同时修改QRTZ_FIRED_TRIGGERS中trigger状态为executing状态。</span><br><span class="line">                                List&lt;TriggerFiredResult&gt; res &#x3D; qsRsrcs.getJobStore().triggersFired(triggers);</span><br><span class="line">                                if(res !&#x3D; null)</span><br><span class="line">                                    bndles &#x3D; res;</span><br><span class="line">。。。</span><br><span class="line">                            JobRunShell shell &#x3D; null;</span><br><span class="line">                            try &#123;</span><br><span class="line">                                shell &#x3D; qsRsrcs.getJobRunShellFactory().createJobRunShell(bndle);</span><br><span class="line">                                shell.initialize(qs);</span><br><span class="line">                            &#125; catch (SchedulerException se) &#123;</span><br><span class="line">                                qsRsrcs.getJobStore().triggeredJobComplete(triggers.get(i), bndle.getJobDetail(), CompletedExecutionInstruction.SET_ALL_JOB_TRIGGERS_ERROR);</span><br><span class="line">                                continue;</span><br><span class="line">                            &#125;</span><br><span class="line">                            &#x2F;&#x2F;真正的到了调用job的execute的地方了，该方法执行完成之后，本次调度就真正完成了。</span><br><span class="line">                            if (qsRsrcs.getThreadPool().runInThread(shell) &#x3D;&#x3D; false) &#123;</span><br><span class="line">                                &#x2F;&#x2F; this case should never happen, as it is indicative of the</span><br><span class="line">                                &#x2F;&#x2F; scheduler being shutdown or a bug in the thread pool or</span><br><span class="line">                                &#x2F;&#x2F; a thread pool being used concurrently - which the docs</span><br><span class="line">                                &#x2F;&#x2F; say not to do...</span><br><span class="line">                                getLog().error(&quot;ThreadPool.runInThread() return false!&quot;);</span><br><span class="line">                                qsRsrcs.getJobStore().triggeredJobComplete(triggers.get(i), bndle.getJobDetail(), CompletedExecutionInstruction.SET_ALL_JOB_TRIGGERS_ERROR);</span><br><span class="line">                            &#125;</span><br><span class="line"></span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        continue; &#x2F;&#x2F; while (!halted)</span><br><span class="line"> &#x2F;&#x2F;后面就是该线程等待一段时间，用于其他节点来调度任务。</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>总结起来，上面代码的逻辑如下：<br>1、启动时，该线程一直都在等待，知道有调用scheudler的start方法，开始唤醒该线程。<br>2、查看当前任务的处理线程池里空闲线程的个数，然后去qrtz_triggers表中获取可以处理的trigger，并将trigger的状态改为acquired，同时插入表qrtz_fired_triggers,此时qrtz_fired_triggers表中trigger的状态也为acquired。<br>3、获取到待执行的trigger，由于取的是时间窗里的trigger，所以，从待执行的trigger列表中取第一个trigger（trigger列表是按照next_fire_time升序排列），与当前时间比较，如果大于2s，则等待。<br>4、等到第一个trigger的任务到了，则去qrtz_triggers表中再次确认获取到的trigger的状态是否为aquired，若是，则修改qrtz_fired_triggers状态为executing。同时，qrtz_triggers中的状态在本次调度时已经走到尽头，可以等待下一次的调度了。即，计算下一次的调度时间，将并将任务状态改为watting状态。若计算得到的下一次调度时间为null，则表明该任务已经执行完成。将任务改为complete状态。返回待本次调度的trigger。<br>5、循环trigger，获取任务执行线程，执行任务的execute方法。<br>6、改调度线程wait一段时间，等待下一次获取trigger，调度。<br>接下来看下真正调度的线程JobRunShell，同样，很长的run方法，这里只摘取部分代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"> public void run() &#123;</span><br><span class="line">        qs.addInternalSchedulerListener(this);</span><br><span class="line">        try &#123;</span><br><span class="line">            OperableTrigger trigger &#x3D; (OperableTrigger) jec.getTrigger();</span><br><span class="line">            JobDetail jobDetail &#x3D; jec.getJobDetail();</span><br><span class="line">            do &#123;</span><br><span class="line">                JobExecutionException jobExEx &#x3D; null;</span><br><span class="line">                Job job &#x3D; jec.getJobInstance();</span><br><span class="line">......</span><br><span class="line">                long startTime &#x3D; System.currentTimeMillis();</span><br><span class="line">                long endTime &#x3D; startTime;</span><br><span class="line">                try &#123;</span><br><span class="line">                    job.execute(jec);</span><br><span class="line">                    endTime &#x3D; System.currentTimeMillis();</span><br><span class="line">                &#125; catch (JobExecutionException jee) &#123;</span><br><span class="line">                    endTime &#x3D; System.currentTimeMillis();</span><br><span class="line">                    jobExEx &#x3D; jee;</span><br><span class="line">                    getLog().info(&quot;Job &quot; + jobDetail.getKey() +</span><br><span class="line">                            &quot; threw a JobExecutionException: &quot;, jobExEx);</span><br><span class="line">                &#125; catch (Throwable e) &#123;</span><br><span class="line">                    endTime &#x3D; System.currentTimeMillis();</span><br><span class="line">                    getLog().error(&quot;Job &quot; + jobDetail.getKey() +</span><br><span class="line">                            &quot; threw an unhandled Exception: &quot;, e);</span><br><span class="line">                    SchedulerException se &#x3D; new SchedulerException(</span><br><span class="line">                            &quot;Job threw an unhandled exception.&quot;, e);</span><br><span class="line">                    qs.notifySchedulerListenersError(&quot;Job (&quot;</span><br><span class="line">                            + jec.getJobDetail().getKey()</span><br><span class="line">                            + &quot; threw an exception.&quot;, se);</span><br><span class="line">                    jobExEx &#x3D; new JobExecutionException(se, false);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                jec.setJobRunTime(endTime - startTime);</span><br><span class="line">......</span><br><span class="line">                CompletedExecutionInstruction instCode &#x3D; CompletedExecutionInstruction.NOOP;</span><br><span class="line">                try &#123;</span><br><span class="line">                    instCode &#x3D; trigger.executionComplete(jec, jobExEx);</span><br><span class="line">                &#125; catch (Exception e) &#123;</span><br><span class="line">                    &#x2F;&#x2F; If this happens, there&#39;s a bug in the trigger...</span><br><span class="line">                    SchedulerException se &#x3D; new SchedulerException(</span><br><span class="line">                            &quot;Trigger threw an unhandled exception.&quot;, e);</span><br><span class="line">                    qs.notifySchedulerListenersError(</span><br><span class="line">                            &quot;Please report this error to the Quartz developers.&quot;,</span><br><span class="line">                            se);</span><br><span class="line">                &#125;</span><br><span class="line">                if (instCode &#x3D;&#x3D; CompletedExecutionInstruction.RE_EXECUTE_JOB) &#123;</span><br><span class="line">                    jec.incrementRefireCount();</span><br><span class="line">                    try &#123;</span><br><span class="line">                        complete(false);</span><br><span class="line">                    &#125; catch (SchedulerException se) &#123;</span><br><span class="line">                        qs.notifySchedulerListenersError(&quot;Error executing Job (&quot;</span><br><span class="line">                                + jec.getJobDetail().getKey()</span><br><span class="line">                                + &quot;: couldn&#39;t finalize execution.&quot;, se);</span><br><span class="line">                    &#125;</span><br><span class="line">                    continue;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                try &#123;</span><br><span class="line">                    complete(true);</span><br><span class="line">                &#125; catch (SchedulerException se) &#123;</span><br><span class="line">                    qs.notifySchedulerListenersError(&quot;Error executing Job (&quot;</span><br><span class="line">                            + jec.getJobDetail().getKey()</span><br><span class="line">                            + &quot;: couldn&#39;t finalize execution.&quot;, se);</span><br><span class="line">                    continue;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                qs.notifyJobStoreJobComplete(trigger, jobDetail, instCode);</span><br><span class="line">                break;</span><br><span class="line">            &#125; while (true);</span><br><span class="line"></span><br><span class="line">        &#125; finally &#123;</span><br><span class="line">            qs.removeInternalSchedulerListener(this);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>上述代码的逻辑很简单，就是获取job并执行job的execute方法。执行完成之后，通过不同的返回码，进行不同的数据库操作。   <code>qs.notifyJobStoreJobComplete(trigger, jobDetail, instCode);</code>这句话就是通过不同的返回值做不同的数据库操作。主要是修改qrtz_triggers里的trigger状态及某些场景下删除trigger。然后是删除qrtz_fired_triggers里的当前trigger。<br>到此，正常的任务调度完成了。当然其中很多步骤里都调用了SchedulerListener，TriggerListener中的一些方法，这些是quartz开放出来的定制接口，方便每步操作时，我们对任务的监控。<br><img src="https://upload-images.jianshu.io/upload_images/11942209-865598eb7cbf6f1c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="状态转换"></p>
+<h4 id="接下来看misfired的进程MisfireHandler。"><a href="#接下来看misfired的进程MisfireHandler。" class="headerlink" title="接下来看misfired的进程MisfireHandler。"></a>接下来看misfired的进程MisfireHandler。</h4><p>Misfirehandler是一个内部类。run接口 代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">  public void run() &#123;</span><br><span class="line">            </span><br><span class="line">            while (!shutdown) &#123;</span><br><span class="line"></span><br><span class="line">                long sTime &#x3D; System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;获取misfired的job</span><br><span class="line">                RecoverMisfiredJobsResult recoverMisfiredJobsResult &#x3D; manage();</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 如果任务处理线程在等待下一次的扫描满足的trigger，则唤醒线程，来处理misfired的任务</span><br><span class="line">                if (recoverMisfiredJobsResult.getProcessedMisfiredTriggerCount() &gt; 0) &#123;</span><br><span class="line">                    signalSchedulingChangeImmediately(recoverMisfiredJobsResult.getEarliestNewTime());</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                if (!shutdown) &#123;</span><br><span class="line">                    long timeToSleep &#x3D; 50l;  &#x2F;&#x2F; At least a short pause to help balance threads</span><br><span class="line">                    if (!recoverMisfiredJobsResult.hasMoreMisfiredTriggers()) &#123;</span><br><span class="line">                        timeToSleep &#x3D; getMisfireThreshold() - (System.currentTimeMillis() - sTime);</span><br><span class="line">                        if (timeToSleep &lt;&#x3D; 0) &#123;</span><br><span class="line">                            timeToSleep &#x3D; 50l;</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        if(numFails &gt; 0) &#123;</span><br><span class="line">                            timeToSleep &#x3D; Math.max(getDbRetryInterval(), timeToSleep);</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    </span><br><span class="line">                    try &#123;</span><br><span class="line">                        Thread.sleep(timeToSleep);</span><br><span class="line">                    &#125; catch (Exception ignore) &#123;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;&#x2F;&#x2F;while !shutdown</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>主要逻辑在manager方法里。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">private RecoverMisfiredJobsResult manage() &#123;</span><br><span class="line">           try &#123;</span><br><span class="line">               getLog().debug(&quot;MisfireHandler: scanning for misfires...&quot;);</span><br><span class="line"></span><br><span class="line">               RecoverMisfiredJobsResult res &#x3D; doRecoverMisfires();</span><br><span class="line">               numFails &#x3D; 0;</span><br><span class="line">               return res;</span><br><span class="line">           &#125; catch (Exception e) &#123;</span><br><span class="line">               if(numFails % 4 &#x3D;&#x3D; 0) &#123;</span><br><span class="line">                   getLog().error(</span><br><span class="line">                       &quot;MisfireHandler: Error handling misfires: &quot;</span><br><span class="line">                               + e.getMessage(), e);</span><br><span class="line">               &#125;</span><br><span class="line">               numFails++;</span><br><span class="line">           &#125;</span><br><span class="line">           return RecoverMisfiredJobsResult.NO_OP;</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p>主要的方法是doRecoverMisfires()。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">protected RecoverMisfiredJobsResult doRecoverMisfires() throws JobPersistenceException &#123;</span><br><span class="line">        boolean transOwner &#x3D; false;</span><br><span class="line">        Connection conn &#x3D; getNonManagedTXConnection();</span><br><span class="line">        try &#123;</span><br><span class="line">            RecoverMisfiredJobsResult result &#x3D; RecoverMisfiredJobsResult.NO_OP;</span><br><span class="line">            </span><br><span class="line">            &#x2F;&#x2F; Before we make the potentially expensive call to acquire the </span><br><span class="line">            &#x2F;&#x2F; trigger lock, peek ahead to see if it is likely we would find</span><br><span class="line">            &#x2F;&#x2F; misfired triggers requiring recovery.</span><br><span class="line">            int misfireCount &#x3D; (getDoubleCheckLockMisfireHandler()) ?</span><br><span class="line">                getDelegate().countMisfiredTriggersInState(</span><br><span class="line">                    conn, STATE_WAITING, getMisfireTime()) : </span><br><span class="line">                Integer.MAX_VALUE;</span><br><span class="line">            </span><br><span class="line">            if (misfireCount &#x3D;&#x3D; 0) &#123;</span><br><span class="line">                getLog().debug(</span><br><span class="line">                    &quot;Found 0 triggers that missed their scheduled fire-time.&quot;);</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                transOwner &#x3D; getLockHandler().obtainLock(conn, LOCK_TRIGGER_ACCESS);</span><br><span class="line">                &#x2F;&#x2F;修改misfired的next fired time ，等待任务选取线程去调度</span><br><span class="line">                result &#x3D; recoverMisfiredJobs(conn, false);</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            commitConnection(conn);</span><br><span class="line">            return result;</span><br></pre></td></tr></table></figure>
+<p> <code>int misfireCount = (getDoubleCheckLockMisfireHandler()) ? getDelegate().countMisfiredTriggersInState( conn,STATE_WAITING,getMisfireTime()) :</code><br>获取misfired的trigger，执行的查询为<code>select count(TRIGGER_NAME) from QRTZ_TRIGGERS where SCHED_NAME=xxx and not (MISFIRE_INSTR = -1 ) and NEXT_FIRE_TIME &lt; 当前时间 and TRIGGER_STATE=&#39;STATE_WAITING&#39;</code>即选取当前调度器的misfired的策略不为-1的，且下一次执行时间小于当前时间的且状态为waiting的trigger。<br><code>result = recoverMisfiredJobs(conn, false);</code>真正获取misfired的job的时候了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">protected RecoverMisfiredJobsResult recoverMisfiredJobs(</span><br><span class="line">        Connection conn, boolean recovering)</span><br><span class="line">        throws JobPersistenceException, SQLException &#123;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; If recovering, we want to handle all of the misfired</span><br><span class="line">        &#x2F;&#x2F; triggers right away.</span><br><span class="line">        int maxMisfiresToHandleAtATime &#x3D; </span><br><span class="line">            (recovering) ? -1 : getMaxMisfiresToHandleAtATime();</span><br><span class="line">        </span><br><span class="line">        List&lt;TriggerKey&gt; misfiredTriggers &#x3D; new LinkedList&lt;TriggerKey&gt;();</span><br><span class="line">        long earliestNewTime &#x3D; Long.MAX_VALUE;</span><br><span class="line">        &#x2F;&#x2F; We must still look for the MISFIRED state in case triggers were left </span><br><span class="line">        &#x2F;&#x2F; in this state when upgrading to this version that does not support it. </span><br><span class="line">        boolean hasMoreMisfiredTriggers &#x3D;</span><br><span class="line">            getDelegate().hasMisfiredTriggersInState(</span><br><span class="line">                conn, STATE_WAITING, getMisfireTime(), </span><br><span class="line">                maxMisfiresToHandleAtATime, misfiredTriggers);</span><br><span class="line"></span><br><span class="line">        if (hasMoreMisfiredTriggers) &#123;</span><br><span class="line">            getLog().info(</span><br><span class="line">                &quot;Handling the first &quot; + misfiredTriggers.size() +</span><br><span class="line">                &quot; triggers that missed their scheduled fire-time.  &quot; +</span><br><span class="line">                &quot;More misfired triggers remain to be processed.&quot;);</span><br><span class="line">        &#125; else if (misfiredTriggers.size() &gt; 0) &#123; </span><br><span class="line">            getLog().info(</span><br><span class="line">                &quot;Handling &quot; + misfiredTriggers.size() + </span><br><span class="line">                &quot; trigger(s) that missed their scheduled fire-time.&quot;);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            getLog().debug(</span><br><span class="line">                &quot;Found 0 triggers that missed their scheduled fire-time.&quot;);</span><br><span class="line">            return RecoverMisfiredJobsResult.NO_OP; </span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (TriggerKey triggerKey: misfiredTriggers) &#123;</span><br><span class="line">            </span><br><span class="line">            OperableTrigger trig &#x3D; </span><br><span class="line">                retrieveTrigger(conn, triggerKey);</span><br><span class="line"></span><br><span class="line">            if (trig &#x3D;&#x3D; null) &#123;</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            doUpdateOfMisfiredTrigger(conn, trig, false, STATE_WAITING, recovering);</span><br><span class="line"></span><br><span class="line">            if(trig.getNextFireTime() !&#x3D; null &amp;&amp; trig.getNextFireTime().getTime() &lt; earliestNewTime)</span><br><span class="line">                earliestNewTime &#x3D; trig.getNextFireTime().getTime();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return new RecoverMisfiredJobsResult(</span><br><span class="line">                hasMoreMisfiredTriggers, misfiredTriggers.size(), earliestNewTime);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>每次获取misfired的trigger有一定的数量，默认20个，超过20个，则会在下一次去获取。<br>处理misfired的trigger<code>doUpdateOfMisfiredTrigger(conn, trig, false, STATE_WAITING, recovering);</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"> private void doUpdateOfMisfiredTrigger(Connection conn, OperableTrigger trig, boolean forceState, String newStateIfNotComplete, boolean recovering) throws JobPersistenceException &#123;</span><br><span class="line">        Calendar cal &#x3D; null;</span><br><span class="line">        if (trig.getCalendarName() !&#x3D; null) &#123;</span><br><span class="line">            cal &#x3D; retrieveCalendar(conn, trig.getCalendarName());</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;触发triggerlistener的misfired方法。</span><br><span class="line">        schedSignaler.notifyTriggerListenersMisfired(trig);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;根据不同的misfired的策略计算next_fired_time。【比较的绕，下次详细介绍】</span><br><span class="line">        trig.updateAfterMisfire(cal);</span><br><span class="line"></span><br><span class="line">        if (trig.getNextFireTime() &#x3D;&#x3D; null) &#123;</span><br><span class="line">&#x2F;&#x2F;如果下一次执行的时间为空，则认为执行的任务已经完成了。直接修改状态的state_complete</span><br><span class="line">            storeTrigger(conn, trig,</span><br><span class="line">                null, true, STATE_COMPLETE, forceState, recovering);</span><br><span class="line">            schedSignaler.notifySchedulerListenersFinalized(trig);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">&#x2F;&#x2F;修改任务的下一次执行时间和任务状态，等待调度线程去调度</span><br><span class="line">            storeTrigger(conn, trig, null, true, newStateIfNotComplete,</span><br><span class="line">                    forceState, recovering);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>执行完上面的代码，提交了数据库事物后，任务就可以被正常调度了。到这里，misfired的任务大体的也完成。<br>然后就是回到manager方法了。唤醒调度线程，至此，misfired的本次扫描全部完成，接下来的事情就交给<code>QuartzSchedulerThread</code>来处理了。<br>写了好几天，终于写完了两个线程的处理过程。接下来的一篇主要介绍任务节点在down机的时候的处理及不同情况下trigger的next_fire_time的计算。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          
+            <a href="/tags/java/" rel="tag"># java</a>
+          
+            <a href="/tags/%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1/" rel="tag"># 定时任务</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/07/17/%E5%8A%A0%E6%B2%B9%E7%9A%84%E6%9D%A5%E5%8E%86/" rel="next" title="加油的来历">
+                <i class="fa fa-chevron-left"></i> 加油的来历
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2020/07/30/%E5%8F%A4%E5%B8%8C%E8%85%8A%E7%A5%9E%E8%AF%9D/" rel="prev" title="古希腊神话">
+                古希腊神话 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC81MTIyNC8yNzcwNQ=="></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">yanzhang</p>
+              <p class="site-description motion-element" itemprop="description">好记性不如烂笔头</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives%7C%7Carchive">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/fuyanzhang" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:fuyzh1024@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#前面的话"><span class="nav-number">1.</span> <span class="nav-text">前面的话</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#具体阅读"><span class="nav-number">2.</span> <span class="nav-text">具体阅读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#一个栗子进入代码"><span class="nav-number">2.1.</span> <span class="nav-text">一个栗子进入代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调度器启动过程"><span class="nav-number">2.2.</span> <span class="nav-text">调度器启动过程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#QuartzSchedulerThread"><span class="nav-number">2.2.1.</span> <span class="nav-text">QuartzSchedulerThread</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#接下来看misfired的进程MisfireHandler。"><span class="nav-number">2.2.2.</span> <span class="nav-text">接下来看misfired的进程MisfireHandler。</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yanzhang</span>
+
+  
+</div>
+
+
+  <div class="powered-by">你站在桥上看风景，看风景的人在楼上看你</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
