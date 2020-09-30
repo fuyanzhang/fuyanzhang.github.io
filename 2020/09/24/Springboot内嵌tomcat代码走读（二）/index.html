@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Java,源码阅读,Spring," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="离上次tomcat的代码走读过了很长时间了，这段时间主要是在自己造个类似web容器的轮子，用来加深NIO的理解。同时大致走读了下undertow相关的代码。今天继续tomcat的代码走读。主要内容是tomcat如何从接收请求到处理请求并回执。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Springboot内嵌tomcat代码走读（二）">
+<meta property="og:url" content="http://fuyanzhang.github.io/2020/09/24/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="普通的猪">
+<meta property="og:description" content="离上次tomcat的代码走读过了很长时间了，这段时间主要是在自己造个类似web容器的轮子，用来加深NIO的理解。同时大致走读了下undertow相关的代码。今天继续tomcat的代码走读。主要内容是tomcat如何从接收请求到处理请求并回执。">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/tomcat_acceptor.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/tomcat-poller.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/tomcat-worker.png">
+<meta property="article:published_time" content="2020-09-24T11:13:34.000Z">
+<meta property="article:modified_time" content="2020-09-30T01:59:16.308Z">
+<meta property="article:author" content="yanzhang">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="源码阅读">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://fuyanzhang.github.io/images/tomcat_acceptor.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://fuyanzhang.github.io/2020/09/24/Springboot内嵌tomcat代码走读（二）/"/>
+
+
+
+
+
+  <title>Springboot内嵌tomcat代码走读（二） | 普通的猪</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">普通的猪</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">一个程序员的点滴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/09/24/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yanzhang">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="普通的猪">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Springboot内嵌tomcat代码走读（二）</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-24T19:13:34+08:00">
+                2020-09-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" itemprop="url" rel="index">
+                    <span itemprop="name">源码阅读</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/Spring/" itemprop="url" rel="index">
+                    <span itemprop="name">Spring</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>离上次tomcat的代码走读过了很长时间了，这段时间主要是在自己造个类似web容器的轮子，用来加深NIO的理解。同时大致走读了下undertow相关的代码。今天继续tomcat的代码走读。主要内容是tomcat如何从接收请求到处理请求并回执。</p>
+<a id="more"></a>
+
+<p>首先看下tomcat处理请求的线程模型。<br>tomcat处理请求主要有三种线程，这里就用线程名里的关键字来标识。</p>
+<ul>
+<li>Acceptor线程 主要是接收请求 。也是一个线程。</li>
+<li>ClientPoller线程主要是向selector中注册socket，并分发到处理线程中。这是一个线程。</li>
+<li>exec线程 主要负责处理真正的请求。调用servlet的service方法。这是一个线程池。<br>下面从源码层面看是如何处理一个请求的。</li>
+</ul>
+<p>首先看上面说的三个线程的启动。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F; Create worker collection</span><br><span class="line">           if (getExecutor() &#x3D;&#x3D; null) &#123;</span><br><span class="line">               &#x2F;&#x2F;工作线程</span><br><span class="line">               createExecutor();</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           initializeConnectionLatch();</span><br><span class="line"></span><br><span class="line">           &#x2F;&#x2F; Start poller thread</span><br><span class="line">           &#x2F;&#x2F;分发线程</span><br><span class="line">           poller &#x3D; new Poller();</span><br><span class="line">           Thread pollerThread &#x3D; new Thread(poller, getName() + &quot;-ClientPoller&quot;);</span><br><span class="line">           pollerThread.setPriority(threadPriority);</span><br><span class="line">           pollerThread.setDaemon(true);</span><br><span class="line">           pollerThread.start();</span><br><span class="line"></span><br><span class="line">           &#x2F;&#x2F;接收请求线程</span><br><span class="line">           startAcceptorThread();</span><br></pre></td></tr></table></figure>
+<p>工作线程的源码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public void createExecutor() &#123;</span><br><span class="line">    internalExecutor &#x3D; true;</span><br><span class="line">    TaskQueue taskqueue &#x3D; new TaskQueue();</span><br><span class="line">    TaskThreadFactory tf &#x3D; new TaskThreadFactory(getName() + &quot;-exec-&quot;, daemon, getThreadPriority());</span><br><span class="line">    executor &#x3D; new ThreadPoolExecutor(getMinSpareThreads(), getMaxThreads(), 60, TimeUnit.SECONDS,taskqueue, tf);</span><br><span class="line">    taskqueue.setParent( (ThreadPoolExecutor) executor);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码比较简单，主要是创建一个工作的线程池，线程池的初始线程数默认是10个，最大线程数默认是200。<br>下面看Acceptor的处理逻辑。<br>先上时序图：<br><img src="/images/tomcat_acceptor.png" alt="tomcat acceptor时序图"></p>
+<blockquote>
+<p>1、Acceptor在启动后，在run方法里调用accept方法，该方法会阻塞直到有连接到来。<br>2、在获取到channel后，将该channel封装成NioChannel，并注册到Poller中去。注册的过程就是简单的把NioChannel封装成的PollerEvent add到事件队列中。<br>至此，Acceptor完成了自己的使命了，接下来就是循环等待下一个请求的到来。<br>相关的源码如下，有些跟主体流程无关的代码就直接隐去了。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">   public void run() &#123;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; Loop until we receive a shutdown command</span><br><span class="line">       while (endpoint.isRunning()) &#123;</span><br><span class="line">           try &#123;</span><br><span class="line">               &#x2F;&#x2F;if we have reached max connections, wait</span><br><span class="line">               endpoint.countUpOrAwaitConnection();</span><br><span class="line"></span><br><span class="line">               &#x2F;&#x2F; Endpoint might have been paused while waiting for latch</span><br><span class="line">               &#x2F;&#x2F; If that is the case, don&#39;t accept new connections</span><br><span class="line">               if (endpoint.isPaused()) &#123;</span><br><span class="line">                   continue;</span><br><span class="line">               &#125;</span><br><span class="line"></span><br><span class="line">               U socket &#x3D; null;</span><br><span class="line">               try &#123;</span><br><span class="line">                   &#x2F;&#x2F;获取连接，线程会阻塞在这个地方，直到有新的连接请求过来。</span><br><span class="line">                   socket &#x3D; endpoint.serverSocketAccept();</span><br><span class="line">               &#125; catch (Exception ioe) &#123;</span><br><span class="line">               </span><br><span class="line">               &#125;</span><br><span class="line">               &#x2F;&#x2F; Successful accept, reset the error delay</span><br><span class="line">               errorDelay &#x3D; 0;</span><br><span class="line"></span><br><span class="line">               &#x2F;&#x2F; Configure the socket</span><br><span class="line">               if (endpoint.isRunning() &amp;&amp; !endpoint.isPaused()) &#123;</span><br><span class="line">                   &#x2F;&#x2F; setSocketOptions里代码比较长，主要是将获取的channel封装成时间，注册到poller的事件队列里供Poller线程分发。</span><br><span class="line">                   if (!endpoint.setSocketOptions(socket)) &#123;</span><br><span class="line">                       endpoint.closeSocket(socket);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   endpoint.destroySocket(socket);</span><br><span class="line">               &#125;</span><br><span class="line">           &#125; catch (Throwable t) &#123;</span><br><span class="line">            。。。</span><br><span class="line">           &#125;</span><br><span class="line">           。。。</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>下面来看下<code>setSocketOptions()</code>的实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line">   * Process the specified connection.</span><br><span class="line">   * @param socket The socket channel</span><br><span class="line">   * @return &lt;code&gt;true&lt;&#x2F;code&gt; if the socket was correctly configured</span><br><span class="line">   *  and processing may continue, &lt;code&gt;false&lt;&#x2F;code&gt; if the socket needs to be</span><br><span class="line">   *  close immediately</span><br><span class="line">   *&#x2F;</span><br><span class="line">  @Override</span><br><span class="line">  protected boolean setSocketOptions(SocketChannel socket) &#123;</span><br><span class="line">      NioSocketWrapper socketWrapper &#x3D; null;</span><br><span class="line">      try &#123;</span><br><span class="line">          &#x2F;&#x2F; Allocate channel and wrapper</span><br><span class="line">          NioChannel channel &#x3D; null;</span><br><span class="line">          if (nioChannels !&#x3D; null) &#123;</span><br><span class="line">              channel &#x3D; nioChannels.pop();</span><br><span class="line">          &#125;</span><br><span class="line">          if (channel &#x3D;&#x3D; null) &#123;</span><br><span class="line">              SocketBufferHandler bufhandler &#x3D; new SocketBufferHandler(</span><br><span class="line">                      socketProperties.getAppReadBufSize(),</span><br><span class="line">                      socketProperties.getAppWriteBufSize(),</span><br><span class="line">                      socketProperties.getDirectBuffer());</span><br><span class="line">              if (isSSLEnabled()) &#123;</span><br><span class="line">                  channel &#x3D; new SecureNioChannel(bufhandler, selectorPool, this);</span><br><span class="line">              &#125; else &#123;</span><br><span class="line">                  channel &#x3D; new NioChannel(bufhandler);</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line">          NioSocketWrapper newWrapper &#x3D; new NioSocketWrapper(channel, this);</span><br><span class="line">          channel.reset(socket, newWrapper);</span><br><span class="line">          connections.put(socket, newWrapper);</span><br><span class="line">          socketWrapper &#x3D; newWrapper;</span><br><span class="line"></span><br><span class="line">          &#x2F;&#x2F; Set socket properties</span><br><span class="line">          &#x2F;&#x2F; Disable blocking, polling will be used</span><br><span class="line">          socket.configureBlocking(false);</span><br><span class="line">          socketProperties.setProperties(socket.socket());</span><br><span class="line"></span><br><span class="line">          socketWrapper.setReadTimeout(getConnectionTimeout());</span><br><span class="line">          socketWrapper.setWriteTimeout(getConnectionTimeout());</span><br><span class="line">          socketWrapper.setKeepAliveLeft(NioEndpoint.this.getMaxKeepAliveRequests());</span><br><span class="line">          socketWrapper.setSecure(isSSLEnabled());</span><br><span class="line">          poller.register(channel, socketWrapper);</span><br><span class="line">          return true;</span><br><span class="line">      &#125; catch (Throwable t) &#123;</span><br><span class="line">          ExceptionUtils.handleThrowable(t);</span><br><span class="line">          try &#123;</span><br><span class="line">              log.error(sm.getString(&quot;endpoint.socketOptionsError&quot;), t);</span><br><span class="line">          &#125; catch (Throwable tt) &#123;</span><br><span class="line">              ExceptionUtils.handleThrowable(tt);</span><br><span class="line">          &#125;</span><br><span class="line">          if (socketWrapper &#x3D;&#x3D; null) &#123;</span><br><span class="line">              destroySocket(socket);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      &#x2F;&#x2F; Tell to close the socket if needed</span><br><span class="line">      return false;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<p>代码很简单，就不做细致的分析与注释了。<br><code>register</code>方法代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public void register(final NioChannel socket, final NioSocketWrapper socketWrapper) &#123;</span><br><span class="line">      socketWrapper.interestOps(SelectionKey.OP_READ);&#x2F;&#x2F;this is what OP_REGISTER turns into.</span><br><span class="line">      PollerEvent event &#x3D; null;</span><br><span class="line">      if (eventCache !&#x3D; null) &#123;</span><br><span class="line">          event &#x3D; eventCache.pop();</span><br><span class="line">      &#125;</span><br><span class="line">      if (event &#x3D;&#x3D; null) &#123;</span><br><span class="line">          event &#x3D; new PollerEvent(socket, OP_REGISTER);</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">          event.reset(socket, OP_REGISTER);</span><br><span class="line">      &#125;</span><br><span class="line">      addEvent(event);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<p><code>addEvent</code>代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">private void addEvent(PollerEvent event) &#123;</span><br><span class="line">    events.offer(event);</span><br><span class="line">    if (wakeupCounter.incrementAndGet() &#x3D;&#x3D; 0) &#123;</span><br><span class="line">        selector.wakeup();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>到这里，Acceptor代码完成。请求已经接进来了。下面看Poller线程如何分发请求到worker线程池里。<br>首先看Poller的时序图：<br><img src="/images/tomcat-poller.png" alt="tomcat Poller时序图"></p>
+<blockquote>
+<p>1、poller线程run方法里，第一件事情是处理事件队列里的事件，将Acceptor里注册的channel注册到Poller中的selector中。<br>2、在selector中选取准备好的channel，循环进行处理。<br>3、将步骤二中选取的连接丢到工作线程池中进行处理。<br>至此，Poller的工作就完成了。接下来就是循环等待新的事件。<br>相关源码大致为:<br><code>run()</code>的代码如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line">        * The background thread that adds sockets to the Poller, checks the</span><br><span class="line">        * poller for triggered events and hands the associated socket off to an</span><br><span class="line">        * appropriate processor as events occur.</span><br><span class="line">        *&#x2F;</span><br><span class="line">       @Override</span><br><span class="line">       public void run() &#123;</span><br><span class="line">           &#x2F;&#x2F; Loop until destroy() is called</span><br><span class="line">           while (true) &#123;</span><br><span class="line"></span><br><span class="line">               boolean hasEvents &#x3D; false;</span><br><span class="line"></span><br><span class="line">               try &#123;</span><br><span class="line">                   if (!close) &#123;</span><br><span class="line">                       hasEvents &#x3D; events();</span><br><span class="line">                       if (wakeupCounter.getAndSet(-1) &gt; 0) &#123;</span><br><span class="line">                           &#x2F;&#x2F; If we are here, means we have other stuff to do</span><br><span class="line">                           &#x2F;&#x2F; Do a non blocking select</span><br><span class="line">                           keyCount &#x3D; selector.selectNow();</span><br><span class="line">                       &#125; else &#123;</span><br><span class="line">                           keyCount &#x3D; selector.select(selectorTimeout);</span><br><span class="line">                       &#125;</span><br><span class="line">                       wakeupCounter.set(0);</span><br><span class="line">                   &#125;</span><br><span class="line">                 ......</span><br><span class="line">               &#x2F;&#x2F; Either we timed out or we woke up, process events first</span><br><span class="line">               if (keyCount &#x3D;&#x3D; 0) &#123;</span><br><span class="line">                   hasEvents &#x3D; (hasEvents | events());</span><br><span class="line">               &#125;</span><br><span class="line"></span><br><span class="line">               Iterator&lt;SelectionKey&gt; iterator &#x3D;</span><br><span class="line">                   keyCount &gt; 0 ? selector.selectedKeys().iterator() : null;</span><br><span class="line">               &#x2F;&#x2F; Walk through the collection of ready keys and dispatch</span><br><span class="line">               &#x2F;&#x2F; any active event.</span><br><span class="line">               while (iterator !&#x3D; null &amp;&amp; iterator.hasNext()) &#123;</span><br><span class="line">                   SelectionKey sk &#x3D; iterator.next();</span><br><span class="line">                   NioSocketWrapper socketWrapper &#x3D; (NioSocketWrapper) sk.attachment();</span><br><span class="line">                   if (socketWrapper &#x3D;&#x3D; null) &#123;</span><br><span class="line">                       iterator.remove();</span><br><span class="line">                   &#125; else &#123;</span><br><span class="line">                       iterator.remove();</span><br><span class="line">                       &#x2F;&#x2F;开始处理秀暗中的连接</span><br><span class="line">                       processKey(sk, socketWrapper);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">   </span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p><code>processKey()</code>的源码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">protected void processKey(SelectionKey sk, NioSocketWrapper socketWrapper) &#123;</span><br><span class="line">           try &#123;</span><br><span class="line">               ...</span><br><span class="line">               ...</span><br><span class="line">                               &#125; else if (!processSocket(socketWrapper, SocketEvent.OPEN_READ, true)) &#123;</span><br><span class="line">                                   closeSocket &#x3D; true;</span><br><span class="line">                               &#125;</span><br><span class="line">                           &#125;</span><br><span class="line">                          .....</span><br><span class="line">                           if (closeSocket) &#123;</span><br><span class="line">                               cancelledKey(sk, socketWrapper);</span><br><span class="line">                           &#125;</span><br><span class="line">                       &#125;</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   &#x2F;&#x2F; Invalid key</span><br><span class="line">                   cancelledKey(sk, socketWrapper);</span><br><span class="line">               &#125;</span><br><span class="line">           &#125; catch (CancelledKeyException ckx) &#123;</span><br><span class="line">            ....</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p><code>processKey</code>主要功能是构造<code>processSocket</code>方法的参数。下面看<code>processSocket</code>相关的代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">public boolean processSocket(SocketWrapperBase&lt;S&gt; socketWrapper,</span><br><span class="line">           SocketEvent event, boolean dispatch) &#123;</span><br><span class="line">       try &#123;</span><br><span class="line">           if (socketWrapper &#x3D;&#x3D; null) &#123;</span><br><span class="line">               return false;</span><br><span class="line">           &#125;</span><br><span class="line">           SocketProcessorBase&lt;S&gt; sc &#x3D; null;</span><br><span class="line">           if (processorCache !&#x3D; null) &#123;</span><br><span class="line">               sc &#x3D; processorCache.pop();</span><br><span class="line">           &#125;</span><br><span class="line">           if (sc &#x3D;&#x3D; null) &#123;</span><br><span class="line">               sc &#x3D; createSocketProcessor(socketWrapper, event);</span><br><span class="line">           &#125; else &#123;</span><br><span class="line">               sc.reset(socketWrapper, event);</span><br><span class="line">           &#125;</span><br><span class="line">           Executor executor &#x3D; getExecutor();</span><br><span class="line">           if (dispatch &amp;&amp; executor !&#x3D; null) &#123;</span><br><span class="line">               executor.execute(sc);</span><br><span class="line">           &#125; else &#123;</span><br><span class="line">               sc.run();</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; catch (RejectedExecutionException ree) &#123;</span><br><span class="line">           getLog().warn(sm.getString(&quot;endpoint.executor.fail&quot;, socketWrapper) , ree);</span><br><span class="line">           return false;</span><br><span class="line">       &#125; catch (Throwable t) &#123;</span><br><span class="line">           ExceptionUtils.handleThrowable(t);</span><br><span class="line">           &#x2F;&#x2F; This means we got an OOM or similar creating a thread, or that</span><br><span class="line">           &#x2F;&#x2F; the pool and its queue are full</span><br><span class="line">           getLog().error(sm.getString(&quot;endpoint.process.fail&quot;), t);</span><br><span class="line">           return false;</span><br><span class="line">       &#125;</span><br><span class="line">       return true;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>上面的方法就是向工作线程池里丢一个任务进行处理。丢进去的线程为<code>SocketProcessor</code>,该类继承自SocketProcessorBase,这个类实现了Runnable。<br>到这里，Poller相关的代码大致走完。下面就看worker线程里做了什么事情了。这里就正式的跟servlet打交道了。</p>
+<p>我们主要看<code>SocketProcessor</code>类的<code>run()</code>方法的处理逻辑。<br>按照惯例，先上时序图。<br><img src="/images/tomcat-worker.png" alt="tomcat SocketProcessor时序图"></p>
+<blockquote>
+<p>1、<br>2、<br>3、<br>关于servlet相关的处理，放在下篇文章里进行详细解读。<br>到此，tomcat接收请求的过程源码大体已经处理完成了。接下来就是servlet的处理了。</p>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          
+            <a href="/tags/Spring/" rel="tag"># Spring</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/08/04/SpringBoot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%B8%80%EF%BC%89/" rel="next" title="SpringBoot内嵌tomcat代码走读（一）">
+                <i class="fa fa-chevron-left"></i> SpringBoot内嵌tomcat代码走读（一）
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC81MTIyNC8yNzcwNQ=="></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+
+      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">yanzhang</p>
+              <p class="site-description motion-element" itemprop="description">好记性不如烂笔头</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives">
+              
+                  <span class="site-state-item-count">7</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/fuyanzhang" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:fuyzh1024@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yanzhang</span>
+
+  
+</div>
+
+
+  <div class="powered-by">你站在桥上看风景，看风景的人在楼上看你</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
