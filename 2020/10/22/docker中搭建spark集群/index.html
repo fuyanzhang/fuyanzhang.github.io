@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Docker,Spark," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="最近在做一些大数据分析的工作，之前没接触过，就使用 docker 搭建了一套 spark 集群，由于对 spark 了解不深入，这里就记录一下 docker 搭建 spark 集群的过程，备用。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="docker中搭建spark集群">
+<meta property="og:url" content="http://fuyanzhang.github.io/2020/10/22/docker%E4%B8%AD%E6%90%AD%E5%BB%BAspark%E9%9B%86%E7%BE%A4/index.html">
+<meta property="og:site_name" content="普通的猪">
+<meta property="og:description" content="最近在做一些大数据分析的工作，之前没接触过，就使用 docker 搭建了一套 spark 集群，由于对 spark 了解不深入，这里就记录一下 docker 搭建 spark 集群的过程，备用。">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/docker_spark_image.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/hadoop_ui.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/spark_ui.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/spark%E4%BB%BB%E5%8A%A1%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%9C.png">
+<meta property="article:published_time" content="2020-10-22T08:48:11.000Z">
+<meta property="article:modified_time" content="2020-11-10T12:06:26.666Z">
+<meta property="article:author" content="yanzhang">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Spark">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://fuyanzhang.github.io/images/docker_spark_image.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://fuyanzhang.github.io/2020/10/22/docker中搭建spark集群/"/>
+
+
+
+
+
+  <title>docker中搭建spark集群 | 普通的猪</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">普通的猪</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">一个程序员的点滴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/10/22/docker%E4%B8%AD%E6%90%AD%E5%BB%BAspark%E9%9B%86%E7%BE%A4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yanzhang">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="普通的猪">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">docker中搭建spark集群</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-10-22T16:48:11+08:00">
+                2020-10-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spark/" itemprop="url" rel="index">
+                    <span itemprop="name">Spark</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spark/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近在做一些大数据分析的工作，之前没接触过，就使用 docker 搭建了一套 spark 集群，由于对 spark 了解不深入，这里就记录一下 docker 搭建 spark 集群的过程，备用。</p>
+<a id="more"></a>
+
+<p>由于公司的大数据平台使用的 spark 比较老。这里使用跟公司相同的版本。<br>Scala: 2.10.4<br>Zookeeper: 3.4.9<br>Hadoop: 2.6.0<br>Spark: 1.5.2<br>JDK： openjdk1.8</p>
+<h2 id="环境及资源包准备"><a href="#环境及资源包准备" class="headerlink" title="环境及资源包准备"></a>环境及资源包准备</h2><p>本文 docker 的宿主机系统为 CentOS7.docker 安装这里略过，不是本文的重点。<br>Scala 下载：<a href="https://scala-lang.org/files/archive/scala-2.10.4.tgz" target="_blank" rel="noopener">https://scala-lang.org/files/archive/scala-2.10.4.tgz</a><br>Hadoop 下载：<a href="https://archive.apache.org/dist/hadoop/core/hadoop-2.6.0/hadoop-2.6.0.tar.gz" target="_blank" rel="noopener">https://archive.apache.org/dist/hadoop/core/hadoop-2.6.0/hadoop-2.6.0.tar.gz</a><br>Zookeeper 下载：<a href="http://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz" target="_blank" rel="noopener">http://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz</a><br>Spark 下载： <a href="http://archive.apache.org/dist/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz" target="_blank" rel="noopener">http://archive.apache.org/dist/spark/spark-1.5.2/spark-1.5.2-bin-hadoop2.6.tgz</a></p>
+<h3 id="准备基础镜像"><a href="#准备基础镜像" class="headerlink" title="准备基础镜像"></a>准备基础镜像</h3><p>1、使用 docker 拉取一个 Ubuntu 镜像<code>docker pull ubuntu</code>.<br>2、启动容器。<code>docker run -it ubuntu</code><br>3、创建 spark 基础镜像。</p>
+<blockquote>
+<p>1、在 Ubuntu 容器中创建文件夹/opt/soft.<br>2、将上面下载的资源包拷贝到容器中。通过命令<code>docker cp src_path containerId:dest_path</code>。其中 containerId 通过<code>docker ps</code>查看。<br>3、安装 jdk。进入容器，将 openjdk1.8 解压到/opt/soft/openjdk1.8.0 下。配置.bashrc 环境变量。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">JAVA_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;openjdk1.8.0</span><br><span class="line">JRE_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;openjdk1.8.0&#x2F;jre</span><br><span class="line">PATH&#x3D;$PATH:$JAVA_HOME&#x2F;bin:$JRE_HOME&#x2F;bin</span><br><span class="line">CLASSPATH&#x3D;.:$JAVA_HOME&#x2F;lib&#x2F;dt.jar:$JAVA_HOME&#x2F;lib&#x2F;tools.jar:$JRE_HOME&#x2F;lib</span><br><span class="line">export JAVA_HOME JRE_HOME PATH CLASSPATH</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>4、将 zookeeper 解压到/opt/soft/zookeeper/zookeeper-3.4.9 中。<br>5、配置 zoo.cfg，这里配置 3 个节点的集群。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"># The number of milliseconds of each tick</span><br><span class="line">tickTime&#x3D;2000</span><br><span class="line"># The number of ticks that the initial</span><br><span class="line"># synchronization phase can take</span><br><span class="line">initLimit&#x3D;10</span><br><span class="line"># The number of ticks that can pass between</span><br><span class="line"># sending a request and getting an acknowledgement</span><br><span class="line">syncLimit&#x3D;5</span><br><span class="line"># the directory where the snapshot is stored.</span><br><span class="line"># do not use &#x2F;tmp for storage, &#x2F;tmp here is just</span><br><span class="line"># example sakes.</span><br><span class="line">dataDir&#x3D;&#x2F;opt&#x2F;soft&#x2F;zookeeper&#x2F;zookeeper-3.4.9&#x2F;tmp</span><br><span class="line"># the port at which the clients will connect</span><br><span class="line">clientPort&#x3D;2181</span><br><span class="line"># the maximum number of client connections.</span><br><span class="line"># increase this if you need to handle more clients</span><br><span class="line">#maxClientCnxns&#x3D;60</span><br><span class="line">#</span><br><span class="line"># Be sure to read the maintenance section of the</span><br><span class="line"># administrator guide before turning on autopurge.</span><br><span class="line">#</span><br><span class="line"># http:&#x2F;&#x2F;zookeeper.apache.org&#x2F;doc&#x2F;current&#x2F;zookeeperAdmin.html#sc_maintenance</span><br><span class="line">#</span><br><span class="line"># The number of snapshots to retain in dataDir</span><br><span class="line">#autopurge.snapRetainCount&#x3D;3</span><br><span class="line"># Purge task interval in hours</span><br><span class="line"># Set to &quot;0&quot; to disable auto purge feature</span><br><span class="line">#autopurge.purgeInterval&#x3D;1</span><br><span class="line">server.1&#x3D;master:2888:3888</span><br><span class="line">server.2&#x3D;slave1:2888:3888</span><br><span class="line">server.3&#x3D;slave2:2888:3888</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>6、配置环境变量，修改.bashrc</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export ZOOKEEPER_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;zookeeper&#x2F;zookeeper-3.4.9</span><br><span class="line">export PATH&#x3D;$PATH:$ZOOKEEPER_HOME&#x2F;bin</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>7、在 tmp 目录下创建 myid 文件。<br>8、解压 Hadoop 到/opt/soft/hadoop 下<br>9、修改配置。<br>修改 slaves。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">master</span><br><span class="line">slave1</span><br><span class="line">slave2</span><br></pre></td></tr></table></figure>
+
+<p>修改 hdfs-site.xml</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line">&lt;configuration&gt;</span><br><span class="line">        &lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.nameservices&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;ns1&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.ha.namenodes.ns1&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;nn1,nn2&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.namenode.rpc-address.ns1.nn1&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;master:9000&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.namenode.http-address.ns1.nn1&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;master:50070&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.namenode.rpc-address.ns1.nn2&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;slave1:9000&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.namenode.http-address.ns1.nn2&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;slave1:50070&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.namenode.shared.edits.dir&lt;&#x2F;name&gt;</span><br><span class="line">&lt;value&gt;qjournal:&#x2F;&#x2F;master:8485;slave1:8485;slave2:8485&#x2F;ns1&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.journalnode.edits.dir&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;&#x2F;opt&#x2F;soft&#x2F;hadoop&#x2F;hadoop-2.6.0&#x2F;journal&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.ha.automatic-failover.enabled&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;true&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.client.failover.proxy.provider.ns1&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;</span><br><span class="line">   org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</span><br><span class="line">   &lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.ha.fencing.methods&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;</span><br><span class="line">   sshfence</span><br><span class="line">   shell(&#x2F;bin&#x2F;true)</span><br><span class="line">   &lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.ha.fencing.ssh.private-key-files&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;&#x2F;root&#x2F;.ssh&#x2F;id_rsa&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;dfs.ha.fencing.ssh.connect-timeout&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;30000&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;&#x2F;configuration&gt;</span><br></pre></td></tr></table></figure>
+
+<p>修改 core-site.xml</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt;configuration&gt;</span><br><span class="line">            &lt;property&gt;</span><br><span class="line">         &lt;name&gt;hadoop.tmp.dir&lt;&#x2F;name&gt;</span><br><span class="line">         &lt;value&gt;&#x2F;opt&#x2F;soft&#x2F;hadoop&#x2F;hadoop-2.6.0&#x2F;tmp&lt;&#x2F;value&gt;</span><br><span class="line">         &lt;description&gt;A base for other temporary directories.&lt;&#x2F;description&gt;</span><br><span class="line">     &lt;&#x2F;property&gt;</span><br><span class="line">     &lt;property&gt;</span><br><span class="line">         &lt;name&gt;fs.default.name&lt;&#x2F;name&gt;</span><br><span class="line">         &lt;value&gt;hdfs:&#x2F;&#x2F;master:9000&lt;&#x2F;value&gt;</span><br><span class="line">         &lt;final&gt;true&lt;&#x2F;final&gt;</span><br><span class="line">         &lt;description&gt;The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.  The uri&#39;s scheme determines the config property (fs.SCHEME.impl) naming the FileSystem implementation class.  The uri&#39;s authority is used to determine the host, port, etc. for a filesystem.&lt;&#x2F;description&gt;</span><br><span class="line">      &lt;&#x2F;property&gt;</span><br><span class="line">&lt;&#x2F;configuration&gt;</span><br></pre></td></tr></table></figure>
+
+<p>修改 yarn-site.xml。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;yarn.resourcemanager.hostname&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;master&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;property&gt;</span><br><span class="line">   &lt;name&gt;yarn.nodemanager.aux-services&lt;&#x2F;name&gt;</span><br><span class="line">   &lt;value&gt;mapreduce_shuffle&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;&#x2F;configuration&gt;</span><br></pre></td></tr></table></figure>
+
+<p>修改 mapred-site.xml</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;configuration&gt;</span><br><span class="line">        &lt;property&gt;</span><br><span class="line">    &lt;name&gt;</span><br><span class="line">      mapreduce.framework.name</span><br><span class="line">    &lt;&#x2F;name&gt;</span><br><span class="line">    &lt;value&gt;yarn&lt;&#x2F;value&gt;</span><br><span class="line">&lt;&#x2F;property&gt;</span><br><span class="line">&lt;&#x2F;configuration&gt;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>10、配置环境变量。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">export HADOOP_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;hadoop&#x2F;hadoop-2.6.0</span><br><span class="line">export HADOOP_CONFIG_HOME&#x3D;$HADOOP_HOME&#x2F;etc&#x2F;hadoop</span><br><span class="line">export PATH&#x3D;$PATH:$HADOOP_HOME&#x2F;bin</span><br><span class="line">export PATH&#x3D;$PATH:$HADOOP_HOME&#x2F;sbin</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>11、安装 scala。解压 scala 包到/opt/soft/scala 下，配置环境变量。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export SCALA_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;scala&#x2F;scala-2.10.4</span><br><span class="line">export PATH&#x3D;$PATH:$SCALA_HOME&#x2F;bin</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>12、安装 spark。解压 spark 到/opt/soft/spark 下。修改配置文件 spark-env.sh。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">export SPARK_MASTER_IP&#x3D;master</span><br><span class="line">export SPARK_WORKER_MEMORY&#x3D;2g</span><br><span class="line">export JAVA_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;openjdk1.8.0</span><br><span class="line">export SCALA_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;scala&#x2F;scala-2.10.4</span><br><span class="line">export SPARK_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;spark&#x2F;spark-1.5.2</span><br><span class="line">export HADOOP_CONF_DIR&#x3D;&#x2F;opt&#x2F;soft&#x2F;hadoop&#x2F;hadoop-2.6.0&#x2F;etc&#x2F;hadoop</span><br><span class="line">export SPARK_LIBRARY_PATH&#x3D;$SPARK_HOME&#x2F;lib</span><br><span class="line">export SCALA_LIBRARY_PATH&#x3D;$SPARK_LIBRARY_PATH</span><br><span class="line">export SPARK_WORKER_CORES&#x3D;1</span><br><span class="line">export SPARK_WORKER_INSTANCES&#x3D;1</span><br><span class="line">export SPARK_MASTER_PORT&#x3D;7077</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>13、修改环境变量。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export SPARK_HOME&#x3D;&#x2F;opt&#x2F;soft&#x2F;spark&#x2F;spark-1.5.2</span><br><span class="line">export PATH&#x3D;$SPARK_HOME&#x2F;bin:$SPARK_HOME&#x2F;sbin:$PATH</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>14、免密登录配置。由于 Hadoop 各个节点间需要免密登录，这里也将免密登录的信息放到镜像里。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -P &#39;&#39; -f ~&#x2F;.ssh&#x2F;id_rsa</span><br><span class="line">cd .ssh</span><br><span class="line">cat id_rsa.pub &gt;&gt; authorized_keys</span><br></pre></td></tr></table></figure>
+
+<p>修改环境变量。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;usr&#x2F;sbin&#x2F;sshd</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>15、执行<code>source ~/.bashrc</code>，使配置的环境变量生效。<br><strong><em>到此，基础环境已经准备 ok 了，使用 docker commit -m “base spark” containerId ubuntu:spark 命令提交镜像</em></strong><br>通过 docker run -it ubuntu:spark 可以进入镜像，执行各个模块的启动脚本可以启动了。<br>创建启动脚本：<br>run_master.sh</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">echo&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.1 host &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.2 master &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.3 slave1 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.4 slave2 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line"></span><br><span class="line">echo 1 &gt; &#x2F;opt&#x2F;soft&#x2F;zookeeper&#x2F;zookeeper-3.4.9&#x2F;tmp&#x2F;myid</span><br><span class="line"></span><br><span class="line">zkServer.sh start &amp;</span><br><span class="line"></span><br><span class="line">hadoop-daemons.sh start journalnode</span><br><span class="line">hdfs namenode -format</span><br><span class="line">hdfs zkfc -formatZK</span><br><span class="line"></span><br><span class="line">start-dfs.sh</span><br><span class="line">start-yarn.sh</span><br><span class="line">start-all.sh</span><br></pre></td></tr></table></figure>
+
+<p>run_slave1.sh</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">echo&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.1 host &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.2 master &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.3 slave1 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.4 slave2 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line"></span><br><span class="line">echo 2 &gt; &#x2F;opt&#x2F;soft&#x2F;zookeeper&#x2F;zookeeper-3.4.9&#x2F;tmp&#x2F;myid</span><br><span class="line"></span><br><span class="line">zkServer.sh start</span><br></pre></td></tr></table></figure>
+
+<p>run_slave2.sh</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">echo&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.1 host &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.2 master &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.3 slave1 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line">echo 172.17.0.4 slave2 &gt;&gt; &#x2F;etc&#x2F;hosts</span><br><span class="line"></span><br><span class="line">echo 3 &gt; &#x2F;opt&#x2F;soft&#x2F;zookeeper&#x2F;zookeeper-3.4.9&#x2F;tmp&#x2F;myid</span><br><span class="line"></span><br><span class="line">zkServer.sh start</span><br></pre></td></tr></table></figure>
+
+<p>stop_master.sh</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">zkServer.sh stop</span><br><span class="line">hadoop-daemons.sh stop journalnode</span><br><span class="line">stop-dfs.sh</span><br><span class="line">stop-yarn.sh</span><br><span class="line">stop-all.sh</span><br></pre></td></tr></table></figure>
+
+<p>提交镜像。用 docker images 查看。<br><img src="/images/docker_spark_image.png" alt="spark集群镜像"></p>
+<h3 id="集群启动"><a href="#集群启动" class="headerlink" title="集群启动"></a>集群启动</h3><p>由于 docker 中的端口号不对外开放，所以在启动 master 容器时，需要跟宿主机端口做一个映射。命令为：<br><code>docker run -it --privileged=true --name spark -h master -p 8081:8080 -p 2181:2181 -p 50070:50070 -p7077:7077 ubuntu:spark</code><br>将 UI 相关的端口映射到宿主机上。（将 8080,2181,50070,7077 端口映射到宿主机的 8081,2181,50070,7077 上，由于我这边的宿主机端口 8080 被占用，所以这里映射到 8081 上）<br>启动 salve 容器，就不需要端口映射了。这里用<code>docker run -it --name slave1 -h slave1 ubuntu:spark</code>和<code>docker run -it --name slave2 -h slave2 ubuntu:spark</code>启动两个 slave 节点。</p>
+<p>分别进入三个容器，执行对应的启动脚本<code>run_master.sh</code>,<code>run_slave1.sh</code>,<code>run_slave2.sh</code>。<br>在浏览器中访问<code>http://xx.xx.xx.xx:50070/dfshealth.html#tab-overview</code>，可以看到 Hadoop 相关信息。<br><img src="/images/hadoop_ui.png" alt="HadoopUI"><br>在浏览器中访问<code>http://xx.xx.xx.xx:8081/</code>，可以看到 spark 相关信息.<br><img src="/images/spark_ui.png" alt="SparkUI"></p>
+<h3 id="运行-spark-任务"><a href="#运行-spark-任务" class="headerlink" title="运行 spark 任务"></a>运行 spark 任务</h3><p>编写一个 helloworld 程序。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">object TestMain &#123;</span><br><span class="line"></span><br><span class="line">  def main(args: Array[String]): Unit &#x3D; &#123;</span><br><span class="line">    val conf &#x3D; new SparkConf().setAppName(&quot;myfirst&quot;)</span><br><span class="line">    val sc &#x3D; new SparkContext(conf)</span><br><span class="line">    val rdd &#x3D; sc.parallelize(List(1,2,3,4,5,6)).map(_*3)</span><br><span class="line">    val mappedRDD &#x3D; rdd.filter(_&gt;10).collect()</span><br><span class="line">    println(rdd.reduce(_+_))</span><br><span class="line">    for (arg &lt;- mappedRDD)</span><br><span class="line">      println(arg+ &quot; &quot;)</span><br><span class="line">    println()</span><br><span class="line">    println(&quot;math is work&quot;)</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>将上面代码打包成 jar 包。使用 spark-submit 命令将任务提交到集群上执行。<br><code>./spark-submit --class com.study.spark.test.TestMain --master spark://xx.xx.xx.xx:7077 test.jar</code><br>发现报了一个 akka 的错误，网上说 akka 只能通过 hostname 进行提交。<br>这里就需要修改 hostname。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">172.17.0.1 host</span><br><span class="line">172.17.0.2 master</span><br><span class="line">172.17.0.3 slave1</span><br><span class="line">172.17.0.4 slave2</span><br></pre></td></tr></table></figure>
+
+<p>再次执行命令，<code>./spark-submit --class com.study.spark.test.TestMain --master spark://master:7077 test.jar --driver-memory 32M --executor-memory 32M</code>。<br>任务成功运行。<br><img src="/images/spark%E4%BB%BB%E5%8A%A1%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%9C.png" alt="SparkUI"></p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://www.jianshu.com/p/ee210190224f" target="_blank" rel="noopener">从 0 开始使用 Docker 搭建 Spark 集群</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Docker/" rel="tag"># Docker</a>
+          
+            <a href="/tags/Spark/" rel="tag"># Spark</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/10/21/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E5%9B%9B%EF%BC%89/" rel="next" title="Springboot内嵌tomcat代码走读（四）">
+                <i class="fa fa-chevron-left"></i> Springboot内嵌tomcat代码走读（四）
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2020/11/04/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E4%B8%8E%E9%94%81/" rel="prev" title="数据库事务隔离与锁">
+                数据库事务隔离与锁 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC81MTIyNC8yNzcwNQ=="></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">yanzhang</p>
+              <p class="site-description motion-element" itemprop="description">好记性不如烂笔头</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives">
+              
+                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">19</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/fuyanzhang" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:fuyzh1024@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#环境及资源包准备"><span class="nav-number">1.</span> <span class="nav-text">环境及资源包准备</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#准备基础镜像"><span class="nav-number">1.1.</span> <span class="nav-text">准备基础镜像</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群启动"><span class="nav-number">1.2.</span> <span class="nav-text">集群启动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#运行-spark-任务"><span class="nav-number">1.3.</span> <span class="nav-text">运行 spark 任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考"><span class="nav-number">1.4.</span> <span class="nav-text">参考</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yanzhang</span>
+
+  
+</div>
+
+
+  <div class="powered-by">你站在桥上看风景，看风景的人在楼上看你</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

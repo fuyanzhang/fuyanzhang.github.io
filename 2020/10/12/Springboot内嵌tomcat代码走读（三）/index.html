@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Java,源码阅读,Spring," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="上篇文章走读了 springboot 中消息处理进入到 servlet 里了，这次，具体走读了请求消息在 servlet 里是怎么处理的。这里主要补充 servlet 和 springmvc 相关的知识。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Springboot内嵌tomcat代码走读（三）">
+<meta property="og:url" content="http://fuyanzhang.github.io/2020/10/12/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%B8%89%EF%BC%89/index.html">
+<meta property="og:site_name" content="普通的猪">
+<meta property="og:description" content="上篇文章走读了 springboot 中消息处理进入到 servlet 里了，这次，具体走读了请求消息在 servlet 里是怎么处理的。这里主要补充 servlet 和 springmvc 相关的知识。">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/springMVC%E6%A1%86%E6%9E%B6%E5%9B%BE.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/DispatcherServlet.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/DispatcherServletRegistrationBean.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/servlet%E6%B5%81%E7%A8%8B%E5%9B%BE.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/FilterRegistrationBean.png">
+<meta property="article:published_time" content="2020-10-12T10:25:10.000Z">
+<meta property="article:modified_time" content="2020-11-10T12:06:56.377Z">
+<meta property="article:author" content="yanzhang">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="源码阅读">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://fuyanzhang.github.io/images/springMVC%E6%A1%86%E6%9E%B6%E5%9B%BE.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://fuyanzhang.github.io/2020/10/12/Springboot内嵌tomcat代码走读（三）/"/>
+
+
+
+
+
+  <title>Springboot内嵌tomcat代码走读（三） | 普通的猪</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">普通的猪</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">一个程序员的点滴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/10/12/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%B8%89%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yanzhang">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="普通的猪">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Springboot内嵌tomcat代码走读（三）</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-10-12T18:25:10+08:00">
+                2020-10-12
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" itemprop="url" rel="index">
+                    <span itemprop="name">源码阅读</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/Spring/" itemprop="url" rel="index">
+                    <span itemprop="name">Spring</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/Spring/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>上篇文章走读了 springboot 中消息处理进入到 servlet 里了，这次，具体走读了请求消息在 servlet 里是怎么处理的。这里主要补充 servlet 和 springmvc 相关的知识。</p>
+<a id="more"></a>
+
+<h3 id="servlet-相关知识"><a href="#servlet-相关知识" class="headerlink" title="servlet 相关知识"></a>servlet 相关知识</h3><h4 id="servlet-生命周期"><a href="#servlet-生命周期" class="headerlink" title="servlet 生命周期"></a>servlet 生命周期</h4><p>servlet 生命周期在 servlet 的代码里能很清楚的体现出来。代码为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">public interface Servlet &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;servlet 初始化，这里摘录了部分注释</span><br><span class="line">    &#x2F;**</span><br><span class="line">     * The servlet container calls the &lt;code&gt;init&lt;&#x2F;code&gt; method exactly once</span><br><span class="line">     * after instantiating the servlet. The &lt;code&gt;init&lt;&#x2F;code&gt; method must</span><br><span class="line">     * complete successfully before the servlet can receive any requests.</span><br><span class="line">    *&#x2F;</span><br><span class="line">    public void init(ServletConfig config) throws ServletException;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     *</span><br><span class="line">     * Returns a &#123;@link ServletConfig&#125; object, which contains initialization and</span><br><span class="line">     * startup parameters for this servlet. The &lt;code&gt;ServletConfig&lt;&#x2F;code&gt;</span><br><span class="line">     * object returned is the one passed to the &lt;code&gt;init&lt;&#x2F;code&gt; method.</span><br><span class="line">     *</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * Implementations of this interface are responsible for storing the</span><br><span class="line">     * &lt;code&gt;ServletConfig&lt;&#x2F;code&gt; object so that this method can return it. The</span><br><span class="line">     * &#123;@link GenericServlet&#125; class, which implements this interface, already</span><br><span class="line">     * does this.</span><br><span class="line">     *</span><br><span class="line">     * @return the &lt;code&gt;ServletConfig&lt;&#x2F;code&gt; object that initializes this</span><br><span class="line">     *         servlet</span><br><span class="line">     *</span><br><span class="line">     * @see #init</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public ServletConfig getServletConfig();</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * Called by the servlet container to allow the servlet to respond to a</span><br><span class="line">     * request.</span><br><span class="line">     *</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * This method is only called after the servlet&#39;s &lt;code&gt;init()&lt;&#x2F;code&gt; method</span><br><span class="line">     * has completed successfully.</span><br><span class="line">     *</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * The status code of the response always should be set for a servlet that</span><br><span class="line">     * throws or sends an error.</span><br><span class="line">     *&#x2F;</span><br><span class="line">     &#x2F;&#x2F;真正的处理请求</span><br><span class="line">    public void service(ServletRequest req, ServletResponse res)</span><br><span class="line">            throws ServletException, IOException;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * Returns information about the servlet, such as author, version, and</span><br><span class="line">     * copyright.</span><br><span class="line">     *</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * The string that this method returns should be plain text and not markup</span><br><span class="line">     * of any kind (such as HTML, XML, etc.).</span><br><span class="line">     *</span><br><span class="line">     * @return a &lt;code&gt;String&lt;&#x2F;code&gt; containing servlet information</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public String getServletInfo();</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * Called by the servlet container to indicate to a servlet that the servlet</span><br><span class="line">     * is being taken out of service. This method is only called once all</span><br><span class="line">     * threads within the servlet&#39;s &lt;code&gt;service&lt;&#x2F;code&gt; method have exited or</span><br><span class="line">     * after a timeout period has passed. After the servlet container calls this</span><br><span class="line">     * method, it will not call the &lt;code&gt;service&lt;&#x2F;code&gt; method again on this</span><br><span class="line">     * servlet.</span><br><span class="line">     *</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * This method gives the servlet an opportunity to clean up any resources</span><br><span class="line">     * that are being held (for example, memory, file handles, threads) and make</span><br><span class="line">     * sure that any persistent state is synchronized with the servlet&#39;s current</span><br><span class="line">     * state in memory.</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public void destroy();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从代码中可以看出，servlet 生命周期是 init–&gt;service–&gt;destory;</p>
+<h4 id="具体过程"><a href="#具体过程" class="headerlink" title="具体过程"></a>具体过程</h4><blockquote>
+<p>1、加载与实例化（new）</p>
+</blockquote>
+<pre><code>servlet在启动时或第一次接收到请求时，会到内存中去查询一下是否有servlet实例，有则取出来，没有则new一个出来。</code></pre><blockquote>
+<p>2、初始化（init）</p>
+</blockquote>
+<pre><code>在创建servlet之后，会调用init方法，进行初始化，该步主要是为接收处理请求做一些必要的准备，只会执行一次。</code></pre><blockquote>
+<p>3、提供服务（service）</p>
+</blockquote>
+<pre><code>servlet实例接收客户端的ServletRequest信息，通过request的信息，调用相应的doXXX()方法，并返回response。</code></pre><blockquote>
+<p>4、销毁（destroy）</p>
+</blockquote>
+<pre><code>servlet容器在关闭时，销毁servlet实例。只会执行一次</code></pre><p>后面以 SpringMVC 为例来具体说明 servlet 的生命周期。</p>
+<h3 id="SpringMVC-相关知识"><a href="#SpringMVC-相关知识" class="headerlink" title="SpringMVC 相关知识"></a>SpringMVC 相关知识</h3><p>这里只简单的罗列一下 SpringMVC 中 M，V，C 的关系。如图：<br><img src="/images/springMVC%E6%A1%86%E6%9E%B6%E5%9B%BE.png" alt="SpringMVC"></p>
+<blockquote>
+<p>1、客户端发送 request 请求进入到分发器中，DispatcherServlet 中。<br>2、分发器通过 uri 到控制器映射中去查询相应的处理器（HandlerMapping）。<br>3、分发器拿到对应的处理器之后，调用处理器响应的接口，返回数据及对应的视图。<br>4、分发器拿到处理器返回的 modelAndView 后，查找相应的视同解析器进行渲染。<br>5、视图将渲染好的结果返回给终端用户进行展示。</p>
+</blockquote>
+<p>下面通过源码的方式看 springboot 中关于 springMVC 和 servlet 相关的实现。</p>
+<h3 id="请求消息在-SpringMVC-中的流向"><a href="#请求消息在-SpringMVC-中的流向" class="headerlink" title="请求消息在 SpringMVC 中的流向"></a>请求消息在 SpringMVC 中的流向</h3><h4 id="servlet-的创建过程（new）"><a href="#servlet-的创建过程（new）" class="headerlink" title="servlet 的创建过程（new）"></a>servlet 的创建过程（new）</h4><p>源码阅读接上篇文章，现在到了 servlet 的处理了。在这之前，看 servlet 在 springboot 中是如何完成实例化及初始化的。<br>首先看 servlet 是如何 new 出来的。springboot 中，使用的是 dispatcherServlet，DispatcherServlet 的类的继承关系图如下<br><img src="/images/DispatcherServlet.png" alt="DispatcherServlet"><br>该类使用自动装配的方式初始化一个 beanName 为<code>dispatcherServlet</code>的 bean。类名为<code>DispatcherServletAutoConfiguration</code>,具体代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">@Bean(name &#x3D; DEFAULT_DISPATCHER_SERVLET_BEAN_NAME)</span><br><span class="line">public DispatcherServlet dispatcherServlet(WebMvcProperties webMvcProperties) &#123;</span><br><span class="line">	DispatcherServlet dispatcherServlet &#x3D; new DispatcherServlet();</span><br><span class="line">	dispatcherServlet.setDispatchOptionsRequest(webMvcProperties.isDispatchOptionsRequest());</span><br><span class="line">	dispatcherServlet.setDispatchTraceRequest(webMvcProperties.isDispatchTraceRequest());</span><br><span class="line">	dispatcherServlet.setThrowExceptionIfNoHandlerFound(webMvcProperties.isThrowExceptionIfNoHandlerFound());</span><br><span class="line">	dispatcherServlet.setPublishEvents(webMvcProperties.isPublishRequestHandledEvents());</span><br><span class="line">	dispatcherServlet.setEnableLoggingRequestDetails(webMvcProperties.isLogRequestDetails());</span><br><span class="line">	return dispatcherServlet;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里就是直接 new 出来一个 servlet，并初始化相关的配置。<br>这个 servlet 对象是如何注册到 tomcat 容器里呢，这里就有下面一个名称为<code>dispatcherServletRegistration</code>的 bean 来做的事情了，具体代码为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">@Configuration(proxyBeanMethods &#x3D; false)</span><br><span class="line">	@Conditional(DispatcherServletRegistrationCondition.class)</span><br><span class="line">	@ConditionalOnClass(ServletRegistration.class)</span><br><span class="line">	@EnableConfigurationProperties(WebMvcProperties.class)</span><br><span class="line">	@Import(DispatcherServletConfiguration.class)</span><br><span class="line">	protected static class DispatcherServletRegistrationConfiguration &#123;</span><br><span class="line"></span><br><span class="line">		@Bean(name &#x3D; DEFAULT_DISPATCHER_SERVLET_REGISTRATION_BEAN_NAME)</span><br><span class="line">		@ConditionalOnBean(value &#x3D; DispatcherServlet.class, name &#x3D; DEFAULT_DISPATCHER_SERVLET_BEAN_NAME)</span><br><span class="line">		public DispatcherServletRegistrationBean dispatcherServletRegistration(DispatcherServlet dispatcherServlet,</span><br><span class="line">				WebMvcProperties webMvcProperties, ObjectProvider&lt;MultipartConfigElement&gt; multipartConfig) &#123;</span><br><span class="line">			DispatcherServletRegistrationBean registration &#x3D; new DispatcherServletRegistrationBean(dispatcherServlet,</span><br><span class="line">					webMvcProperties.getServlet().getPath());</span><br><span class="line">			registration.setName(DEFAULT_DISPATCHER_SERVLET_BEAN_NAME);</span><br><span class="line">			registration.setLoadOnStartup(webMvcProperties.getServlet().getLoadOnStartup());</span><br><span class="line">			multipartConfig.ifAvailable(registration::setMultipartConfig);</span><br><span class="line">			return registration;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里需要看一下<code>DispatcherServletRegistrationBean</code>类的继承关系图了。<br><img src="/images/DispatcherServletRegistrationBean.png" alt="DispatcherServletRegistrationBean"><br>从图中看出，<code>DispatcherServletRegistrationBean</code>实现了接口<code>ServletContextInitializer</code>，<a href="/2020/08/04/SpringBoot内嵌tomcat代码走读（一）/#more">SpringBoot 内嵌 tomcat 代码走读（一）</a>中，有对这个接口的调用代码。<code>this.webServer = factory.getWebServer(getSelfInitializer());</code>在获取<code>webServer</code>时，传入想改接口的调用。<br>接下来我们看 DispatcherServletRegistrationBean 的<code>OnStartup</code>的实现,该方法实现在其父类<code>RegistrationBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public final void onStartup(ServletContext servletContext) throws ServletException &#123;</span><br><span class="line">	String description &#x3D; getDescription();</span><br><span class="line">	if (!isEnabled()) &#123;</span><br><span class="line">		logger.info(StringUtils.capitalize(description) + &quot; was not registered (disabled)&quot;);</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	register(description, servletContext);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>主要方法<code>register</code>的实现在其子类<code>DynamicRegistrationBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected final void register(String description, ServletContext servletContext) &#123;</span><br><span class="line">	D registration &#x3D; addRegistration(description, servletContext);</span><br><span class="line">	if (registration &#x3D;&#x3D; null) &#123;</span><br><span class="line">		logger.info(StringUtils.capitalize(description) + &quot; was not registered (possibly already registered?)&quot;);</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	configure(registration);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其主要方法<code>addRegistration</code>在其子类<code>ServletRegistrationBean</code>中实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected ServletRegistration.Dynamic addRegistration(String description, ServletContext servletContext) &#123;</span><br><span class="line">	String name &#x3D; getServletName();</span><br><span class="line">	return servletContext.addServlet(name, this.servlet);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>servletContext</code>为<code>ApplicationContextFacade</code>，<code>addServlet</code>代码为:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public ServletRegistration.Dynamic addServlet(String servletName,</span><br><span class="line">        Servlet servlet) &#123;</span><br><span class="line">    if (SecurityUtil.isPackageProtectionEnabled()) &#123;</span><br><span class="line">        return (ServletRegistration.Dynamic) doPrivileged(&quot;addServlet&quot;,</span><br><span class="line">                new Class[]&#123;String.class, Servlet.class&#125;,</span><br><span class="line">                new Object[]&#123;servletName, servlet&#125;);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        return context.addServlet(servletName, servlet);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Tomcat 的 ApplicationContext 里加入 servlet。代码为:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line">private ServletRegistration.Dynamic addServlet(String servletName, String servletClass,</span><br><span class="line">           Servlet servlet, Map&lt;String,String&gt; initParams) throws IllegalStateException &#123;</span><br><span class="line"></span><br><span class="line">       if (servletName &#x3D;&#x3D; null || servletName.equals(&quot;&quot;)) &#123;</span><br><span class="line">           throw new IllegalArgumentException(sm.getString(</span><br><span class="line">                   &quot;applicationContext.invalidServletName&quot;, servletName));</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       if (!context.getState().equals(LifecycleState.STARTING_PREP)) &#123;</span><br><span class="line">           &#x2F;&#x2F;TODO Spec breaking enhancement to ignore this restriction</span><br><span class="line">           throw new IllegalStateException(</span><br><span class="line">                   sm.getString(&quot;applicationContext.addServlet.ise&quot;,</span><br><span class="line">                           getContextPath()));</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       Wrapper wrapper &#x3D; (Wrapper) context.findChild(servletName);</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; Assume a &#39;complete&#39; ServletRegistration is one that has a class and</span><br><span class="line">       &#x2F;&#x2F; a name</span><br><span class="line">       if (wrapper &#x3D;&#x3D; null) &#123;</span><br><span class="line">           wrapper &#x3D; context.createWrapper();</span><br><span class="line">           wrapper.setName(servletName);</span><br><span class="line">           context.addChild(wrapper);</span><br><span class="line">       &#125; else &#123;</span><br><span class="line">           if (wrapper.getName() !&#x3D; null &amp;&amp;</span><br><span class="line">                   wrapper.getServletClass() !&#x3D; null) &#123;</span><br><span class="line">               if (wrapper.isOverridable()) &#123;</span><br><span class="line">                   wrapper.setOverridable(false);</span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   return null;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       ServletSecurity annotation &#x3D; null;</span><br><span class="line">       if (servlet &#x3D;&#x3D; null) &#123;</span><br><span class="line">           wrapper.setServletClass(servletClass);</span><br><span class="line">           Class&lt;?&gt; clazz &#x3D; Introspection.loadClass(context, servletClass);</span><br><span class="line">           if (clazz !&#x3D; null) &#123;</span><br><span class="line">               annotation &#x3D; clazz.getAnnotation(ServletSecurity.class);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; else &#123;</span><br><span class="line">           wrapper.setServletClass(servlet.getClass().getName());</span><br><span class="line">           wrapper.setServlet(servlet);</span><br><span class="line">           if (context.wasCreatedDynamicServlet(servlet)) &#123;</span><br><span class="line">               annotation &#x3D; servlet.getClass().getAnnotation(ServletSecurity.class);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       if (initParams !&#x3D; null) &#123;</span><br><span class="line">           for (Map.Entry&lt;String, String&gt; initParam: initParams.entrySet()) &#123;</span><br><span class="line">               wrapper.addInitParameter(initParam.getKey(), initParam.getValue());</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       ServletRegistration.Dynamic registration &#x3D;</span><br><span class="line">               new ApplicationServletRegistration(wrapper, context);</span><br><span class="line">       if (annotation !&#x3D; null) &#123;</span><br><span class="line">           registration.setServletSecurity(new ServletSecurityElement(annotation));</span><br><span class="line">       &#125;</span><br><span class="line">       return registration;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里主要逻辑是向 tomcat 里添加 servlet。前面我们知道 tomcat 的体系结构，为了提高扩展性，tomcat 里分层定义了很多组件，在最内层组件为 Wrapper，这里就是想 warapper 中添加 servlet。这里用默认的 wrapper，<code>StandardWrapper</code>，具体代码为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public void setServlet(Servlet servlet) &#123;</span><br><span class="line">    instance &#x3D; servlet;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>至此，tomcat 的基本功能就有了，servlet 也有了。但是，当前的 servlet 还不能用，因为从上面的 servlet 生命周期看，这只完成了第一步，还有 init 这一步没有完成。那么，init 在什么时候呢。继续看代码。<br>从代码中可以知道，当第一个请求过来时，servlet 才进行 init 操作。接上篇文章的请求流程图，这里看请求在 servlet 中的流向。这里流程图从 StandardWrapperValue 的 invoke 方法开始进行。<br>调用流程图如下：<br><img src="/images/servlet%E6%B5%81%E7%A8%8B%E5%9B%BE.png" alt="servlet流程图"><br>按照流程图，我们走读一下代码，具体看看相关的处理逻辑。<br>首先看<code>invoke</code>方法里的代码逻辑。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">public final void invoke(Request request, Response response)</span><br><span class="line">       throws IOException, ServletException &#123;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; Initialize local variables we may need</span><br><span class="line">       boolean unavailable &#x3D; false;</span><br><span class="line">       Throwable throwable &#x3D; null;</span><br><span class="line">       &#x2F;&#x2F; This should be a Request attribute...</span><br><span class="line">       long t1&#x3D;System.currentTimeMillis();</span><br><span class="line">       requestCount.incrementAndGet();</span><br><span class="line">       StandardWrapper wrapper &#x3D; (StandardWrapper) getContainer();</span><br><span class="line">       Servlet servlet &#x3D; null;</span><br><span class="line">       Context context &#x3D; (Context) wrapper.getParent();</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F;去掉一些与主流程关系不太大的代码</span><br><span class="line">       .......</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; Allocate a servlet instance to process this request</span><br><span class="line">       try &#123;</span><br><span class="line">           if (!unavailable) &#123;</span><br><span class="line">               servlet &#x3D; wrapper.allocate();</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; catch (UnavailableException e) &#123;</span><br><span class="line">         。。。。。。</span><br><span class="line"></span><br><span class="line">       MessageBytes requestPathMB &#x3D; request.getRequestPathMB();</span><br><span class="line">       DispatcherType dispatcherType &#x3D; DispatcherType.REQUEST;</span><br><span class="line">       if (request.getDispatcherType()&#x3D;&#x3D;DispatcherType.ASYNC) dispatcherType &#x3D; DispatcherType.ASYNC;</span><br><span class="line">       request.setAttribute(Globals.DISPATCHER_TYPE_ATTR,dispatcherType);</span><br><span class="line">       request.setAttribute(Globals.DISPATCHER_REQUEST_PATH_ATTR,</span><br><span class="line">               requestPathMB);</span><br><span class="line">       &#x2F;&#x2F; Create the filter chain for this request</span><br><span class="line">       &#x2F;&#x2F;获取一个ApplicationFilterChain</span><br><span class="line">       ApplicationFilterChain filterChain &#x3D;</span><br><span class="line">               ApplicationFilterFactory.createFilterChain(request, wrapper, servlet);</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; Call the filter chain for this request</span><br><span class="line">       &#x2F;&#x2F; NOTE: This also calls the servlet&#39;s service() method</span><br><span class="line">       Container container &#x3D; this.container;</span><br><span class="line">       try &#123;</span><br><span class="line">           if ((servlet !&#x3D; null) &amp;&amp; (filterChain !&#x3D; null)) &#123;</span><br><span class="line"></span><br><span class="line">              。。。。。。</span><br><span class="line"></span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   &#x2F;&#x2F; 开始处理请求</span><br><span class="line">                   if (request.isAsyncDispatching()) &#123;</span><br><span class="line">                       request.getAsyncContextInternal().doInternalDispatch();</span><br><span class="line">                   &#125; else &#123;</span><br><span class="line">                       &#x2F;&#x2F; 开始处理请求</span><br><span class="line">                       filterChain.doFilter</span><br><span class="line">                           (request.getRequest(), response.getResponse());</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line"></span><br><span class="line">           &#125;</span><br><span class="line">       &#125; catch (ClientAbortException | CloseNowException e) &#123;</span><br><span class="line">           。。。。。。</span><br><span class="line"></span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>上面代码比较长，做了一下删减。主要的功能是初始化 servlet（init）和具体调用 servlet 的<code>service</code>方法。<br><code>servlet</code>的<code>init</code>方法在<code>allocate()</code>中调用。<code>service</code>方法在<code>doFilter</code>中调用。</p>
+<h4 id="servlet-初始化过程（init）"><a href="#servlet-初始化过程（init）" class="headerlink" title="servlet 初始化过程（init）"></a>servlet 初始化过程（init）</h4><p>具体看下<code>allocate()</code>的实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line">public Servlet allocate() throws ServletException &#123;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; If we are currently unloading this servlet, throw an exception</span><br><span class="line">       if (unloading) &#123;</span><br><span class="line">           throw new ServletException(sm.getString(&quot;standardWrapper.unloading&quot;, getName()));</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       boolean newInstance &#x3D; false;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; If not SingleThreadedModel, return the same instance every time</span><br><span class="line">       &#x2F;&#x2F;该处并不知道singleThreadModel的值，使用默认值，在loadServlet中会有确定的赋值，但SingleThreadedModel已经被废弃，这里也走不到该分支中，所以，springboot中的servlet是一个实例。</span><br><span class="line">       &#x2F;&#x2F;当为SingleThreadedModel类型时，容器中会有多个servlet实例，默认最多20个。</span><br><span class="line">       if (!singleThreadModel) &#123;</span><br><span class="line">           &#x2F;&#x2F; Load and initialize our instance if necessary</span><br><span class="line">           &#x2F;&#x2F;前文提到了instance在bean初始化时已经将instance赋值了，这里instance！&#x3D;null,但instanceInitialized&#x3D;false</span><br><span class="line">           if (instance &#x3D;&#x3D; null || !instanceInitialized) &#123;</span><br><span class="line">               synchronized (this) &#123;</span><br><span class="line">                   &#x2F;&#x2F;该分支在该处不会走到。</span><br><span class="line">                   if (instance &#x3D;&#x3D; null) &#123;</span><br><span class="line">                      。。。。。。</span><br><span class="line">                   &#125;</span><br><span class="line">                   if (!instanceInitialized) &#123;</span><br><span class="line">                       &#x2F;&#x2F;init servlet</span><br><span class="line">                       initServlet(instance);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           if (singleThreadModel) &#123;</span><br><span class="line">               if (newInstance) &#123;</span><br><span class="line">                   &#x2F;&#x2F; Have to do this outside of the sync above to prevent a</span><br><span class="line">                   &#x2F;&#x2F; possible deadlock</span><br><span class="line">                   synchronized (instancePool) &#123;</span><br><span class="line">                       instancePool.push(instance);</span><br><span class="line">                       nInstances++;</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125; else &#123;</span><br><span class="line">               if (log.isTraceEnabled()) &#123;</span><br><span class="line">                   log.trace(&quot;  Returning non-STM instance&quot;);</span><br><span class="line">               &#125;</span><br><span class="line">               &#x2F;&#x2F; For new instances, count will have been incremented at the</span><br><span class="line">               &#x2F;&#x2F; time of creation</span><br><span class="line">               if (!newInstance) &#123;</span><br><span class="line">                   countAllocated.incrementAndGet();</span><br><span class="line">               &#125;</span><br><span class="line">               return instance;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       synchronized (instancePool) &#123;</span><br><span class="line">           while (countAllocated.get() &gt;&#x3D; nInstances) &#123;</span><br><span class="line">               &#x2F;&#x2F; Allocate a new instance if possible, or else wait</span><br><span class="line">               if (nInstances &lt; maxInstances) &#123;</span><br><span class="line">                   try &#123;</span><br><span class="line">                       instancePool.push(loadServlet());</span><br><span class="line">                       nInstances++;</span><br><span class="line">                   &#125; catch (ServletException e) &#123;</span><br><span class="line">                       throw e;</span><br><span class="line">                   &#125; catch (Throwable e) &#123;</span><br><span class="line">                       ExceptionUtils.handleThrowable(e);</span><br><span class="line">                       throw new ServletException(sm.getString(&quot;standardWrapper.allocate&quot;), e);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   try &#123;</span><br><span class="line">                       instancePool.wait();</span><br><span class="line">                   &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                       &#x2F;&#x2F; Ignore</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">           if (log.isTraceEnabled()) &#123;</span><br><span class="line">               log.trace(&quot;  Returning allocated STM instance&quot;);</span><br><span class="line">           &#125;</span><br><span class="line">           countAllocated.incrementAndGet();</span><br><span class="line">           return instancePool.pop();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>allocate 方法中，instance ！=null，singleThreadModel 一直都为 false，因为不会走到 loadServlet 中，singleThreadModel 的值一直为 false。容器中 servlet 实例只有一个。提一句：如果 singleThreadModel 类型为 SingleThreadModel 时，容器中可以有多个 servlet 实例，放在一个大小为 20 的栈中。SingleThreadModel 已经被废弃掉了<code>@deprecated As of Java Servlet API 2.4, with no direct replacement.</code>。<br>下面看<code>initServlet()</code>方法的处理逻辑。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">private synchronized void initServlet(Servlet servlet)</span><br><span class="line">        throws ServletException &#123;</span><br><span class="line"></span><br><span class="line">    if (instanceInitialized &amp;&amp; !singleThreadModel) return;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; Call the initialization method of this servlet</span><br><span class="line">    try &#123;</span><br><span class="line">        if( Globals.IS_SECURITY_ENABLED) &#123;</span><br><span class="line">            boolean success &#x3D; false;</span><br><span class="line">            try &#123;</span><br><span class="line">                Object[] args &#x3D; new Object[] &#123; facade &#125;;</span><br><span class="line">                SecurityUtil.doAsPrivilege(&quot;init&quot;,</span><br><span class="line">                                           servlet,</span><br><span class="line">                                           classType,</span><br><span class="line">                                           args);</span><br><span class="line">                success &#x3D; true;</span><br><span class="line">            &#125; finally &#123;</span><br><span class="line">                if (!success) &#123;</span><br><span class="line">                    &#x2F;&#x2F; destroy() will not be called, thus clear the reference now</span><br><span class="line">                    SecurityUtil.remove(servlet);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            servlet.init(facade);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        instanceInitialized &#x3D; true;</span><br><span class="line">    &#125; catch (UnavailableException f) &#123;</span><br><span class="line">        unavailable(f);</span><br><span class="line">        throw f;</span><br><span class="line">    &#125; catch (ServletException f) &#123;</span><br><span class="line">        &#x2F;&#x2F; If the servlet wanted to be unavailable it would have</span><br><span class="line">        &#x2F;&#x2F; said so, so do not call unavailable(null).</span><br><span class="line">        throw f;</span><br><span class="line">    &#125; catch (Throwable f) &#123;</span><br><span class="line">        ExceptionUtils.handleThrowable(f);</span><br><span class="line">        getServletContext().log(sm.getString(&quot;standardWrapper.initException&quot;, getName()), f);</span><br><span class="line">        &#x2F;&#x2F; If the servlet wanted to be unavailable it would have</span><br><span class="line">        &#x2F;&#x2F; said so, so do not call unavailable(null).</span><br><span class="line">        throw new ServletException</span><br><span class="line">            (sm.getString(&quot;standardWrapper.initException&quot;, getName()), f);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码很简单，就是调用 servlet 的 init 方法。<br>具体的 init 方法实现在其父类<code>GenericServlet</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public void init(ServletConfig config) throws ServletException &#123;</span><br><span class="line">    this.config &#x3D; config;</span><br><span class="line">    this.init();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里的 init 方法在子类<code>HttpServletBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">	&#x2F;&#x2F; Let subclasses do whatever initialization they like.</span><br><span class="line">	initServletBean();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>initServletBean()</code>方法在子类<code>FrameworkServlet</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">	protected final void initServletBean() throws ServletException &#123;</span><br><span class="line"></span><br><span class="line">		long startTime &#x3D; System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">		try &#123;</span><br><span class="line">			this.webApplicationContext &#x3D; initWebApplicationContext();</span><br><span class="line">			initFrameworkServlet();</span><br><span class="line">		&#125;</span><br><span class="line">		catch (ServletException | RuntimeException ex) &#123;</span><br><span class="line">			logger.error(&quot;Context initialization failed&quot;, ex);</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>initFrameworkServlet()</code>是留给子类实现的一个扩展接口，默认为空实现，主要的逻辑在<code>initWebApplicationContext()</code>中，该方法主要是初始化一些策略，如文件解析器，国际化解析器，主题解析器，处理器映射器，处理器适配器，异常处理器，视图解析器等。具体的实现在子类<code>DispatcherServlet</code>中。<br>代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected void onRefresh(ApplicationContext context) &#123;</span><br><span class="line">	initStrategies(context);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * Initialize the strategy objects that this servlet uses.</span><br><span class="line"> * &lt;p&gt;May be overridden in subclasses in order to initialize further strategy objects.</span><br><span class="line"> *&#x2F;</span><br><span class="line">protected void initStrategies(ApplicationContext context) &#123;</span><br><span class="line">       &#x2F;&#x2F;文件解析器，没有，返回为空。</span><br><span class="line">	initMultipartResolver(context);</span><br><span class="line">       &#x2F;&#x2F;国际化解析，没有，返回默认值，AcceptHeaderLocaleResolver</span><br><span class="line">	initLocaleResolver(context);</span><br><span class="line">       &#x2F;&#x2F;主题解析，没有返回默认值FixedThemeResolver</span><br><span class="line">	initThemeResolver(context);</span><br><span class="line">       &#x2F;&#x2F;处理器映射，若没有，返回默认值BeanNameUrlHandlerMapping，RequestMappingHandlerMapping，RouterFunctionMapping</span><br><span class="line">	initHandlerMappings(context);</span><br><span class="line">       &#x2F;&#x2F;处理器适配器，若没有，返回默认值HttpRequestHandlerAdapter，SimpleControllerHandlerAdapter，RequestMappingHandlerAdapter，HandlerFunctionAdapter</span><br><span class="line">	initHandlerAdapters(context);</span><br><span class="line">       &#x2F;&#x2F;异常解析，若没有，返回默认值ExceptionHandlerExceptionResolver，ResponseStatusExceptionResolver，DefaultHandlerExceptionResolver</span><br><span class="line">	initHandlerExceptionResolvers(context);</span><br><span class="line">       &#x2F;&#x2F;异常后，没有返回视图时的默认处理DefaultRequestToViewNameTranslator</span><br><span class="line">	initRequestToViewNameTranslator(context);</span><br><span class="line">       &#x2F;&#x2F;视图解析，没有返回InternalResourceViewResolver</span><br><span class="line">	initViewResolvers(context);</span><br><span class="line">       &#x2F;&#x2F;默认值SessionFlashMapManager</span><br><span class="line">	initFlashMapManager(context);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>后面通过看具体的请求处理来看上面的处理器如何工作的。</p>
+</blockquote>
+<p>到此，servlet 的 init 方法正式处理完成，就可以提供服务了。</p>
+<h4 id="servlet-提供服务过程（service）"><a href="#servlet-提供服务过程（service）" class="headerlink" title="servlet 提供服务过程（service）"></a>servlet 提供服务过程（service）</h4><p>下面，看<code>service</code>如何处理。<br>从前文中的代码中可以知道，在调用<code>service</code>之前，需要获取一个<code>ApplicationFilterChain</code>，先来看看<code>ApplicationFilterFactory</code>中<code>createFilterChain</code>里做了哪些事情。从类名中可以猜到，这里主要是添加一些<code>Filter</code>相关的信息。具体代码为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line">public static ApplicationFilterChain createFilterChain(ServletRequest request,</span><br><span class="line">            Wrapper wrapper, Servlet servlet) &#123;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Create and initialize a filter chain object</span><br><span class="line">        ApplicationFilterChain filterChain &#x3D; null;</span><br><span class="line">        if (request instanceof Request) &#123;</span><br><span class="line">            Request req &#x3D; (Request) request;</span><br><span class="line">            if (Globals.IS_SECURITY_ENABLED) &#123;</span><br><span class="line">                &#x2F;&#x2F; Security: Do not recycle</span><br><span class="line">                filterChain &#x3D; new ApplicationFilterChain();</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                filterChain &#x3D; (ApplicationFilterChain) req.getFilterChain();</span><br><span class="line">                if (filterChain &#x3D;&#x3D; null) &#123;</span><br><span class="line">                    filterChain &#x3D; new ApplicationFilterChain();</span><br><span class="line">                    req.setFilterChain(filterChain);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            &#x2F;&#x2F; Request dispatcher in use</span><br><span class="line">            filterChain &#x3D; new ApplicationFilterChain();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        filterChain.setServlet(servlet);</span><br><span class="line">        filterChain.setServletSupportsAsync(wrapper.isAsyncSupported());</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Acquire the filter mappings for this Context</span><br><span class="line">        StandardContext context &#x3D; (StandardContext) wrapper.getParent();</span><br><span class="line">        &#x2F;&#x2F;获取Filter列表</span><br><span class="line">        FilterMap filterMaps[] &#x3D; context.findFilterMaps();</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; If there are no filter mappings, we are done</span><br><span class="line">        if ((filterMaps &#x3D;&#x3D; null) || (filterMaps.length &#x3D;&#x3D; 0))</span><br><span class="line">            return filterChain;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Acquire the information we will need to match filter mappings</span><br><span class="line">        DispatcherType dispatcher &#x3D;</span><br><span class="line">                (DispatcherType) request.getAttribute(Globals.DISPATCHER_TYPE_ATTR);</span><br><span class="line"></span><br><span class="line">        String requestPath &#x3D; null;</span><br><span class="line">        Object attribute &#x3D; request.getAttribute(Globals.DISPATCHER_REQUEST_PATH_ATTR);</span><br><span class="line">        if (attribute !&#x3D; null)&#123;</span><br><span class="line">            requestPath &#x3D; attribute.toString();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String servletName &#x3D; wrapper.getName();</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Add the relevant path-mapped filters to this filter chain</span><br><span class="line">        for (FilterMap filterMap : filterMaps) &#123;</span><br><span class="line">            if (!matchDispatcher(filterMap, dispatcher)) &#123;</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line">            if (!matchFiltersURL(filterMap, requestPath))</span><br><span class="line">                continue;</span><br><span class="line">            ApplicationFilterConfig filterConfig &#x3D; (ApplicationFilterConfig)</span><br><span class="line">                    context.findFilterConfig(filterMap.getFilterName());</span><br><span class="line">            if (filterConfig &#x3D;&#x3D; null) &#123;</span><br><span class="line">                &#x2F;&#x2F; FIXME - log configuration problem</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line">            filterChain.addFilter(filterConfig);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Add filters that match on servlet name second</span><br><span class="line">        for (FilterMap filterMap : filterMaps) &#123;</span><br><span class="line">            if (!matchDispatcher(filterMap, dispatcher)) &#123;</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line">            if (!matchFiltersServlet(filterMap, servletName))</span><br><span class="line">                continue;</span><br><span class="line">            ApplicationFilterConfig filterConfig &#x3D; (ApplicationFilterConfig)</span><br><span class="line">                    context.findFilterConfig(filterMap.getFilterName());</span><br><span class="line">            if (filterConfig &#x3D;&#x3D; null) &#123;</span><br><span class="line">                &#x2F;&#x2F; FIXME - log configuration problem</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line">            filterChain.addFilter(filterConfig);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; Return the completed filter chain</span><br><span class="line">        return filterChain;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中比较重要的一行代码<code>FilterMap filterMaps[] = context.findFilterMaps();</code>，获取过滤器列表。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public FilterMap[] findFilterMaps() &#123;</span><br><span class="line">    return filterMaps.asArray();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里<code>filterMaps</code>是在什么时候进行赋值的呢？此处又会回到<code>ServletContextInitializer</code>这个接口的<code>onStartup</code>方法里了。<br>前文里提到过，在<code>createWebServer</code>时，有个方法引用<code>getSelfInitializer</code>。这里同样走到这段代码里。</p>
+<h5 id="Filter-相关的准备工作"><a href="#Filter-相关的准备工作" class="headerlink" title="Filter 相关的准备工作"></a>Filter 相关的准备工作</h5><p>我们在通常在 springboot 里定义过滤器时，可以使用如下代码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Bean</span><br><span class="line">public FilterRegistrationBean xxxFilter() &#123;</span><br><span class="line">    FilterRegistrationBean registrationBean &#x3D; new FilterRegistrationBean();</span><br><span class="line">    XxxFilter xxxFilter &#x3D; new XxxFilter();</span><br><span class="line">    registrationBean.addUrlPatterns(&quot;&#x2F;*&quot;);</span><br><span class="line">    registrationBean.setFilter(xxxFilter);</span><br><span class="line">    return registrationBean;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看下<code>FilterRegistrationBean</code>的类图<img src="/images/FilterRegistrationBean.png" alt="FilterRegistrationBean"></p>
+<p>FilterRegistrationBean 同样实现了 ServletContextInitializer 接口。<br>同时，我们还可以进行如下方式定义过滤器。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">@Service</span><br><span class="line">public class TestFilter implements Filter &#123;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void init(FilterConfig filterConfig) throws ServletException &#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)</span><br><span class="line">        throws IOException, ServletException &#123;</span><br><span class="line">        chain.doFilter(request, response);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void destroy() &#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这种方式没有显式的定义成一个<code>FilterRegistrationBean</code>，在代码中事实上也封装成一个<code>FilterRegistrationBean</code>。接下来看具体的代码实现。<br>首先看<code>ServletContextInitializer</code>的<code>onStartup</code>的调用处代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">private void selfInitialize(ServletContext servletContext) throws ServletException &#123;</span><br><span class="line">	prepareWebApplicationContext(servletContext);</span><br><span class="line">	registerApplicationScope(servletContext);</span><br><span class="line">	WebApplicationContextUtils.registerEnvironmentBeans(getBeanFactory(), servletContext);</span><br><span class="line">	for (ServletContextInitializer beans : getServletContextInitializerBeans()) &#123;</span><br><span class="line">		beans.onStartup(servletContext);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>getServletContextInitializerBeans()</code>里从 bean 工厂里获取<code>ServletContextInitializer</code>类型的 bean，调用<code>onStartup</code>方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">protected Collection&lt;ServletContextInitializer&gt; getServletContextInitializerBeans() &#123;</span><br><span class="line">	return new ServletContextInitializerBeans(getBeanFactory());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public ServletContextInitializerBeans(ListableBeanFactory beanFactory,</span><br><span class="line">		Class&lt;? extends ServletContextInitializer&gt;... initializerTypes) &#123;</span><br><span class="line">	this.initializers &#x3D; new LinkedMultiValueMap&lt;&gt;();</span><br><span class="line">	this.initializerTypes &#x3D; (initializerTypes.length !&#x3D; 0) ? Arrays.asList(initializerTypes)</span><br><span class="line">			: Collections.singletonList(ServletContextInitializer.class);</span><br><span class="line">       &#x2F;&#x2F;显式定义为ServletContextInitializer的bean</span><br><span class="line">	addServletContextInitializerBeans(beanFactory);</span><br><span class="line">       &#x2F;&#x2F;未显式定义为ServletContextInitializer的bean</span><br><span class="line">	addAdaptableBeans(beanFactory);</span><br><span class="line">	List&lt;ServletContextInitializer&gt; sortedInitializers &#x3D; this.initializers.values().stream()</span><br><span class="line">			.flatMap((value) -&gt; value.stream().sorted(AnnotationAwareOrderComparator.INSTANCE))</span><br><span class="line">			.collect(Collectors.toList());</span><br><span class="line">	this.sortedList &#x3D; Collections.unmodifiableList(sortedInitializers);</span><br><span class="line">	logMappings(this.initializers);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>显式定义为 ServletContextInitializer 的 bean 的处理方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">private void addServletContextInitializerBeans(ListableBeanFactory beanFactory) &#123;</span><br><span class="line">	for (Class&lt;? extends ServletContextInitializer&gt; initializerType : this.initializerTypes) &#123;</span><br><span class="line">		for (Entry&lt;String, ? extends ServletContextInitializer&gt; initializerBean : getOrderedBeansOfType(beanFactory,</span><br><span class="line">				initializerType)) &#123;</span><br><span class="line">			addServletContextInitializerBean(initializerBean.getKey(), initializerBean.getValue(), beanFactory);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">private void addServletContextInitializerBean(String beanName, ServletContextInitializer initializer,</span><br><span class="line">			ListableBeanFactory beanFactory) &#123;</span><br><span class="line">		if (initializer instanceof ServletRegistrationBean) &#123;</span><br><span class="line">			Servlet source &#x3D; ((ServletRegistrationBean&lt;?&gt;) initializer).getServlet();</span><br><span class="line">			addServletContextInitializerBean(Servlet.class, beanName, initializer, beanFactory, source);</span><br><span class="line">		&#125;</span><br><span class="line">		else if (initializer instanceof FilterRegistrationBean) &#123;</span><br><span class="line">			Filter source &#x3D; ((FilterRegistrationBean&lt;?&gt;) initializer).getFilter();</span><br><span class="line">			addServletContextInitializerBean(Filter.class, beanName, initializer, beanFactory, source);</span><br><span class="line">		&#125;</span><br><span class="line">		else if (initializer instanceof DelegatingFilterProxyRegistrationBean) &#123;</span><br><span class="line">			String source &#x3D; ((DelegatingFilterProxyRegistrationBean) initializer).getTargetBeanName();</span><br><span class="line">			addServletContextInitializerBean(Filter.class, beanName, initializer, beanFactory, source);</span><br><span class="line">		&#125;</span><br><span class="line">		else if (initializer instanceof ServletListenerRegistrationBean) &#123;</span><br><span class="line">			EventListener source &#x3D; ((ServletListenerRegistrationBean&lt;?&gt;) initializer).getListener();</span><br><span class="line">			addServletContextInitializerBean(EventListener.class, beanName, initializer, beanFactory, source);</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			addServletContextInitializerBean(ServletContextInitializer.class, beanName, initializer, beanFactory,</span><br><span class="line">					initializer);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">private void addServletContextInitializerBean(Class&lt;?&gt; type, String beanName, ServletContextInitializer initializer,</span><br><span class="line">		ListableBeanFactory beanFactory, Object source) &#123;</span><br><span class="line">	this.initializers.add(type, initializer);</span><br><span class="line">	if (source !&#x3D; null) &#123;</span><br><span class="line">		&#x2F;&#x2F; Mark the underlying source as seen in case it wraps an existing bean</span><br><span class="line">		this.seen.add(source);</span><br><span class="line">	&#125;</span><br><span class="line">	if (logger.isTraceEnabled()) &#123;</span><br><span class="line">		String resourceDescription &#x3D; getResourceDescription(beanName, beanFactory);</span><br><span class="line">		int order &#x3D; getOrder(initializer);</span><br><span class="line">		logger.trace(&quot;Added existing &quot; + type.getSimpleName() + &quot; initializer bean &#39;&quot; + beanName + &quot;&#39;; order&#x3D;&quot;</span><br><span class="line">				+ order + &quot;, resource&#x3D;&quot; + resourceDescription);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>未显式定义为 ServletContextInitializer 的 bean</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">protected void addAdaptableBeans(ListableBeanFactory beanFactory) &#123;</span><br><span class="line">	MultipartConfigElement multipartConfig &#x3D; getMultipartConfig(beanFactory);</span><br><span class="line">	addAsRegistrationBean(beanFactory, Servlet.class, new ServletRegistrationBeanAdapter(multipartConfig));</span><br><span class="line">	addAsRegistrationBean(beanFactory, Filter.class, new FilterRegistrationBeanAdapter());</span><br><span class="line">	for (Class&lt;?&gt; listenerType : ServletListenerRegistrationBean.getSupportedTypes()) &#123;</span><br><span class="line">		addAsRegistrationBean(beanFactory, EventListener.class, (Class&lt;EventListener&gt;) listenerType,</span><br><span class="line">				new ServletListenerRegistrationBeanAdapter());</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">private &lt;T, B extends T&gt; void addAsRegistrationBean(ListableBeanFactory beanFactory, Class&lt;T&gt; type,</span><br><span class="line">		Class&lt;B&gt; beanType, RegistrationBeanAdapter&lt;T&gt; adapter) &#123;</span><br><span class="line">	List&lt;Map.Entry&lt;String, B&gt;&gt; entries &#x3D; getOrderedBeansOfType(beanFactory, beanType, this.seen);</span><br><span class="line">	for (Entry&lt;String, B&gt; entry : entries) &#123;</span><br><span class="line">		String beanName &#x3D; entry.getKey();</span><br><span class="line">		B bean &#x3D; entry.getValue();</span><br><span class="line">		if (this.seen.add(bean)) &#123;</span><br><span class="line">			&#x2F;&#x2F; One that we haven&#39;t already seen</span><br><span class="line">               &#x2F;&#x2F;通过适配器模式，进行处理。</span><br><span class="line">			RegistrationBean registration &#x3D; adapter.createRegistrationBean(beanName, bean, entries.size());</span><br><span class="line">			int order &#x3D; getOrder(bean);</span><br><span class="line">			registration.setOrder(order);</span><br><span class="line">			this.initializers.add(type, registration);</span><br><span class="line">			if (logger.isTraceEnabled()) &#123;</span><br><span class="line">				logger.trace(&quot;Created &quot; + type.getSimpleName() + &quot; initializer for bean &#39;&quot; + beanName + &quot;&#39;; order&#x3D;&quot;</span><br><span class="line">						+ order + &quot;, resource&#x3D;&quot; + getResourceDescription(beanName, beanFactory));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">private static class FilterRegistrationBeanAdapter implements RegistrationBeanAdapter&lt;Filter&gt; &#123;</span><br><span class="line"></span><br><span class="line">	@Override</span><br><span class="line">	public RegistrationBean createRegistrationBean(String name, Filter source, int totalNumberOfSourceBeans) &#123;</span><br><span class="line">		FilterRegistrationBean&lt;Filter&gt; bean &#x3D; new FilterRegistrationBean&lt;&gt;(source);</span><br><span class="line">		bean.setName(name);</span><br><span class="line">		return bean;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码比较简单，这里只做代码的罗列，不做详细说明。<br>接下来看<code>FilterRegistrationBean</code>里<code>onStartup</code>方法的处理逻辑，该方法的实现在其父类<code>RegistrationBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public final void onStartup(ServletContext servletContext) throws ServletException &#123;</span><br><span class="line">	String description &#x3D; getDescription();</span><br><span class="line">	if (!isEnabled()) &#123;</span><br><span class="line">		logger.info(StringUtils.capitalize(description) + &quot; was not registered (disabled)&quot;);</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	register(description, servletContext);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>register</code>方法在<code>RegistrationBean</code>子类<code>DynamicRegistrationBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected final void register(String description, ServletContext servletContext) &#123;</span><br><span class="line">	D registration &#x3D; addRegistration(description, servletContext);</span><br><span class="line">	if (registration &#x3D;&#x3D; null) &#123;</span><br><span class="line">		logger.info(StringUtils.capitalize(description) + &quot; was not registered (possibly already registered?)&quot;);</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line">	configure(registration);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>addRegistration</code>在其子类<code>AbstractFilterRegistrationBean</code>中实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected Dynamic addRegistration(String description, ServletContext servletContext) &#123;</span><br><span class="line">	Filter filter &#x3D; getFilter();</span><br><span class="line">	return servletContext.addFilter(getOrDeduceName(filter), filter);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>addFilter</code>代码走到<code>ApplicationContextFacade</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public FilterRegistration.Dynamic addFilter(String filterName,</span><br><span class="line">        Filter filter) &#123;</span><br><span class="line">    if (SecurityUtil.isPackageProtectionEnabled()) &#123;</span><br><span class="line">        return (FilterRegistration.Dynamic) doPrivileged(&quot;addFilter&quot;,</span><br><span class="line">                new Class[]&#123;String.class, Filter.class&#125;,</span><br><span class="line">                new Object[]&#123;filterName, filter&#125;);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        return context.addFilter(filterName, filter);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后走到<code>ApplicationContext</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">private FilterRegistration.Dynamic addFilter(String filterName,</span><br><span class="line">           String filterClass, Filter filter) throws IllegalStateException &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">       FilterDef filterDef &#x3D; context.findFilterDef(filterName);</span><br><span class="line"></span><br><span class="line">       if (filterDef &#x3D;&#x3D; null) &#123;</span><br><span class="line">           filterDef &#x3D; new FilterDef();</span><br><span class="line">           filterDef.setFilterName(filterName);</span><br><span class="line">           context.addFilterDef(filterDef);</span><br><span class="line">       &#125; else &#123;</span><br><span class="line">           if (filterDef.getFilterName() !&#x3D; null &amp;&amp;</span><br><span class="line">                   filterDef.getFilterClass() !&#x3D; null) &#123;</span><br><span class="line">               return null;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">       return new ApplicationFilterRegistration(filterDef, context);</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后将 FilterDef 加入到<code>StandradContext</code>的<code>filterDefs</code>中。<br>回过头来，看 DynamicRegistrationBean 中<code>register</code>的第二个主要调用的方法<code>configure()</code><br>对于过滤器来说，实现方法在<code>AbstractFilterRegistrationBean</code>中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">	protected void configure(FilterRegistration.Dynamic registration) &#123;</span><br><span class="line">		super.configure(registration);</span><br><span class="line">		EnumSet&lt;DispatcherType&gt; dispatcherTypes &#x3D; this.dispatcherTypes;</span><br><span class="line">		if (dispatcherTypes &#x3D;&#x3D; null) &#123;</span><br><span class="line">			T filter &#x3D; getFilter();</span><br><span class="line">			if (ClassUtils.isPresent(&quot;org.springframework.web.filter.OncePerRequestFilter&quot;,</span><br><span class="line">					filter.getClass().getClassLoader()) &amp;&amp; filter instanceof OncePerRequestFilter) &#123;</span><br><span class="line">				dispatcherTypes &#x3D; EnumSet.allOf(DispatcherType.class);</span><br><span class="line">			&#125;</span><br><span class="line">			else &#123;</span><br><span class="line">				dispatcherTypes &#x3D; EnumSet.of(DispatcherType.REQUEST);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		Set&lt;String&gt; servletNames &#x3D; new LinkedHashSet&lt;&gt;();</span><br><span class="line">		for (ServletRegistrationBean&lt;?&gt; servletRegistrationBean : this.servletRegistrationBeans) &#123;</span><br><span class="line">			servletNames.add(servletRegistrationBean.getServletName());</span><br><span class="line">		&#125;</span><br><span class="line">		servletNames.addAll(this.servletNames);</span><br><span class="line">		if (servletNames.isEmpty() &amp;&amp; this.urlPatterns.isEmpty()) &#123;</span><br><span class="line">			registration.addMappingForUrlPatterns(dispatcherTypes, this.matchAfter, DEFAULT_URL_MAPPINGS);</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			if (!servletNames.isEmpty()) &#123;</span><br><span class="line">				registration.addMappingForServletNames(dispatcherTypes, this.matchAfter,</span><br><span class="line">						StringUtils.toStringArray(servletNames));</span><br><span class="line">			&#125;</span><br><span class="line">			if (!this.urlPatterns.isEmpty()) &#123;</span><br><span class="line">				registration.addMappingForUrlPatterns(dispatcherTypes, this.matchAfter,</span><br><span class="line">						StringUtils.toStringArray(this.urlPatterns));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>registration.addMappingForUrlPatterns(dispatcherTypes, this.matchAfter, DEFAULT_URL_MAPPINGS);</code>这里的方法将每个 filter 通过 StandardContext 的<code>addFilterMapBefore</code>方式，塞到 filterMap 中的 arrays 中。通过<code>findFilterMaps</code>就能得到所有的 filter 了。<br>到此，Filter 相关的准备工作完成。</p>
+<blockquote>
+<p><strong><em>需要补充上面流程的流程图</em></strong>。</p>
+</blockquote>
+<h5 id="回到-service"><a href="#回到-service" class="headerlink" title="回到 service"></a>回到 service</h5><p>回到前文的<code>ApplicationFilterChain</code>的获取上。<code>ApplicationFilterFactory</code>里通过<code>context.findFilterMaps();</code>获取所有的过滤器，放入 filterChain 中。<br><code>StandardWrapperValue</code>中代码继续往下走，调用了 ApplicationFilterChain 的<code>doFilter</code>方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">private void internalDoFilter(ServletRequest request,</span><br><span class="line">                                 ServletResponse response)</span><br><span class="line">       throws IOException, ServletException &#123;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; 遍历所有的filter，这里就是为啥我们在定义Filter时，为了让chain能顺利的走完需要调用chain.doFilter()的原因。</span><br><span class="line">       if (pos &lt; n) &#123;</span><br><span class="line">           ApplicationFilterConfig filterConfig &#x3D; filters[pos++];</span><br><span class="line">           try &#123;</span><br><span class="line">               Filter filter &#x3D; filterConfig.getFilter();</span><br><span class="line"></span><br><span class="line">               if (request.isAsyncSupported() &amp;&amp; &quot;false&quot;.equalsIgnoreCase(</span><br><span class="line">                       filterConfig.getFilterDef().getAsyncSupported())) &#123;</span><br><span class="line">                   request.setAttribute(Globals.ASYNC_SUPPORTED_ATTR, Boolean.FALSE);</span><br><span class="line">               &#125;</span><br><span class="line">              。。。。。。</span><br><span class="line">               &#125; else &#123;</span><br><span class="line">                   filter.doFilter(request, response, this);</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">           。。。。。。</span><br><span class="line">           &#125;</span><br><span class="line">           return;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       &#x2F;&#x2F; We fell off the end of the chain -- call the servlet instance</span><br><span class="line">       try &#123;</span><br><span class="line">           。。。。。。</span><br><span class="line">           if ((request instanceof HttpServletRequest) &amp;&amp;</span><br><span class="line">                   (response instanceof HttpServletResponse) &amp;&amp;</span><br><span class="line">                   Globals.IS_SECURITY_ENABLED ) &#123;</span><br><span class="line">               final ServletRequest req &#x3D; request;</span><br><span class="line">               final ServletResponse res &#x3D; response;</span><br><span class="line">               Principal principal &#x3D;</span><br><span class="line">                   ((HttpServletRequest) req).getUserPrincipal();</span><br><span class="line">               Object[] args &#x3D; new Object[]&#123;req, res&#125;;</span><br><span class="line">               SecurityUtil.doAsPrivilege(&quot;service&quot;,</span><br><span class="line">                                          servlet,</span><br><span class="line">                                          classTypeUsedInService,</span><br><span class="line">                                          args,</span><br><span class="line">                                          principal);</span><br><span class="line">           &#125; else &#123;</span><br><span class="line">               servlet.service(request, response);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; 。。。。。。</span><br><span class="line">       。。。。。。</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>以上代码就进入到了 servlet 的另外一个生命周期了，提供 service 服务了。<br>下篇文章，我们具体看下 service 接口里的逻辑.</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          
+            <a href="/tags/Spring/" rel="tag"># Spring</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/09/24/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/" rel="next" title="Springboot内嵌tomcat代码走读（二）">
+                <i class="fa fa-chevron-left"></i> Springboot内嵌tomcat代码走读（二）
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2020/10/21/Springboot%E5%86%85%E5%B5%8Ctomcat%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%88%E5%9B%9B%EF%BC%89/" rel="prev" title="Springboot内嵌tomcat代码走读（四）">
+                Springboot内嵌tomcat代码走读（四） <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC81MTIyNC8yNzcwNQ=="></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">yanzhang</p>
+              <p class="site-description motion-element" itemprop="description">好记性不如烂笔头</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives">
+              
+                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">19</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/fuyanzhang" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+                  <span class="links-of-author-item">
+                    <a href="mailto:fuyzh1024@gmail.com" target="_blank" title="E-Mail">
+                      
+                        <i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#servlet-相关知识"><span class="nav-number">1.</span> <span class="nav-text">servlet 相关知识</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#servlet-生命周期"><span class="nav-number">1.1.</span> <span class="nav-text">servlet 生命周期</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#具体过程"><span class="nav-number">1.2.</span> <span class="nav-text">具体过程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SpringMVC-相关知识"><span class="nav-number">2.</span> <span class="nav-text">SpringMVC 相关知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#请求消息在-SpringMVC-中的流向"><span class="nav-number">3.</span> <span class="nav-text">请求消息在 SpringMVC 中的流向</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#servlet-的创建过程（new）"><span class="nav-number">3.1.</span> <span class="nav-text">servlet 的创建过程（new）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#servlet-初始化过程（init）"><span class="nav-number">3.2.</span> <span class="nav-text">servlet 初始化过程（init）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#servlet-提供服务过程（service）"><span class="nav-number">3.3.</span> <span class="nav-text">servlet 提供服务过程（service）</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Filter-相关的准备工作"><span class="nav-number">3.3.1.</span> <span class="nav-text">Filter 相关的准备工作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#回到-service"><span class="nav-number">3.3.2.</span> <span class="nav-text">回到 service</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yanzhang</span>
+
+  
+</div>
+
+
+  <div class="powered-by">你站在桥上看风景，看风景的人在楼上看你</div>
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
