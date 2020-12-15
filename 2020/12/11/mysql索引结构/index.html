@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Java,源码阅读," />
+  <meta name="keywords" content="DB,mysql,索引," />
 
 
 
@@ -79,21 +79,24 @@
 
 
 
-<meta name="description" content="我们平时在工作中，处处离不开 JAVA，那么 java 到底是怎么玩的呢，这里从 Java 源码层面进行一个走读。本文主要介绍 java 源码编译，使用的 java 源码是 openjdk 的当前 master 分支，bootjdk 使用的是 jdk15.0.1，在 Ubuntu16.04 LTS">
+<meta name="description" content="前段时间做了一些性能优化的工作，其中有些数据库优化的工作包含在里边。发现有些数据库的基础知识记忆有些模糊，这里简单的对数据库的基础知识做一些记录，加深印象。这里以 mysql 为主进行说明。本篇笔记主要记录 mysql InnoDB 引擎的索引结构。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="HotSpot源码调试">
-<meta property="og:url" content="http://fuyanzhang.github.io/2020/11/18/HotSpot%E6%BA%90%E7%A0%81%E8%B0%83%E8%AF%95/index.html">
+<meta property="og:title" content="mysql索引结构">
+<meta property="og:url" content="http://fuyanzhang.github.io/2020/12/11/mysql%E7%B4%A2%E5%BC%95%E7%BB%93%E6%9E%84/index.html">
 <meta property="og:site_name" content="普通的猪">
-<meta property="og:description" content="我们平时在工作中，处处离不开 JAVA，那么 java 到底是怎么玩的呢，这里从 Java 源码层面进行一个走读。本文主要介绍 java 源码编译，使用的 java 源码是 openjdk 的当前 master 分支，bootjdk 使用的是 jdk15.0.1，在 Ubuntu16.04 LTS">
-<meta property="og:image" content="http://fuyanzhang.github.io/images/debug_openjdk16.png">
-<meta property="og:image" content="http://fuyanzhang.github.io/images/debug_openjdk_ing.png">
-<meta property="article:published_time" content="2020-11-18T01:36:22.000Z">
-<meta property="article:modified_time" content="2020-11-19T02:04:02.470Z">
+<meta property="og:description" content="前段时间做了一些性能优化的工作，其中有些数据库优化的工作包含在里边。发现有些数据库的基础知识记忆有些模糊，这里简单的对数据库的基础知识做一些记录，加深印象。这里以 mysql 为主进行说明。本篇笔记主要记录 mysql InnoDB 引擎的索引结构。">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/B%E6%A0%91.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/B+%E6%A0%91.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/%E8%81%9A%E9%9B%86%E7%B4%A2%E5%BC%95.png">
+<meta property="og:image" content="http://fuyanzhang.github.io/images/%E5%9B%9E%E8%A1%A8.png">
+<meta property="article:published_time" content="2020-12-11T10:15:30.000Z">
+<meta property="article:modified_time" content="2020-12-15T03:08:44.793Z">
 <meta property="article:author" content="yanzhang">
-<meta property="article:tag" content="Java">
-<meta property="article:tag" content="源码阅读">
+<meta property="article:tag" content="DB">
+<meta property="article:tag" content="mysql">
+<meta property="article:tag" content="索引">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://fuyanzhang.github.io/images/debug_openjdk16.png">
+<meta name="twitter:image" content="http://fuyanzhang.github.io/images/B%E6%A0%91.png">
 
 
 
@@ -123,13 +126,13 @@
 
 
 
-  <link rel="canonical" href="http://fuyanzhang.github.io/2020/11/18/HotSpot源码调试/"/>
+  <link rel="canonical" href="http://fuyanzhang.github.io/2020/12/11/mysql索引结构/"/>
 
 
 
 
 
-  <title>HotSpot源码调试 | 普通的猪</title>
+  <title>mysql索引结构 | 普通的猪</title>
   
 
 
@@ -246,7 +249,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/11/18/HotSpot%E6%BA%90%E7%A0%81%E8%B0%83%E8%AF%95/">
+    <link itemprop="mainEntityOfPage" href="http://fuyanzhang.github.io/2020/12/11/mysql%E7%B4%A2%E5%BC%95%E7%BB%93%E6%9E%84/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="yanzhang">
@@ -263,7 +266,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">HotSpot源码调试</h1>
+          <h1 class="post-title" itemprop="name headline">mysql索引结构</h1>
         
 
         <div class="post-meta">
@@ -275,8 +278,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-11-18T09:36:22+08:00">
-                2020-11-18
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-11T18:15:30+08:00">
+                2020-12-11
               </time>
             
 
@@ -298,8 +301,8 @@
               
               
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" itemprop="url" rel="index">
-                    <span itemprop="name">源码阅读</span>
+                  <a href="/categories/DB/" itemprop="url" rel="index">
+                    <span itemprop="name">DB</span>
                   </a>
                 </span>
 
@@ -309,7 +312,7 @@
                 
               
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                  <a href="/categories/DB/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
                     <span itemprop="name">技术</span>
                   </a>
                 </span>
@@ -351,25 +354,27 @@
       
 
       
-        <p>我们平时在工作中，处处离不开 JAVA，那么 java 到底是怎么玩的呢，这里从 Java 源码层面进行一个走读。本文主要介绍 java 源码编译，使用的 java 源码是 openjdk 的当前 master 分支，bootjdk 使用的是 jdk15.0.1，在 Ubuntu16.04 LTS</p>
+        <p>前段时间做了一些性能优化的工作，其中有些数据库优化的工作包含在里边。发现有些数据库的基础知识记忆有些模糊，这里简单的对数据库的基础知识做一些记录，加深印象。<br>这里以 mysql 为主进行说明。本篇笔记主要记录 mysql InnoDB 引擎的索引结构。</p>
 <a id="more"></a>
 
-<h1 id="编译"><a href="#编译" class="headerlink" title="编译"></a>编译</h1><h3 id="下载代码及相关依赖"><a href="#下载代码及相关依赖" class="headerlink" title="下载代码及相关依赖"></a>下载代码及相关依赖</h3><p>现在 openjdk 源码已经托管到 GitHub 上了，在 GitHub 上下载 master 分支代码<br><code>git clone https://github.com/openjdk/jdk.git</code><br>编译 openjdk 需要一个 boot-jdk，执行源码的 configure 脚本，里边会有提示，openjdk16 推荐的 boot-jdk 版本为 14 和 15，这里我用的是 jdk15，在 openjdk 官网上下载 jdk15 的安装包。<code>https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_linux-x64_bin.tar.gz</code></p>
-<h3 id="编译-1"><a href="#编译-1" class="headerlink" title="编译"></a>编译</h3><p>关于编译，GitHub 上的官方文档也有一些，但是比较粗略，官方文档<code>https://github.com/openjdk/jdk/blob/master/doc/building.md</code>。这里我就直接贴出我的编译命令。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;configure --with-target-bits&#x3D;64 --disable-warnings-as-errors --with-boot-jdk&#x3D;&#x2F;home&#x2F;fuyanzhang&#x2F;xiaomi&#x2F;study&#x2F;java&#x2F;jdk-15.0.1</span><br><span class="line">make images</span><br></pre></td></tr></table></figure>
+<h1 id="B-树与-B-树"><a href="#B-树与-B-树" class="headerlink" title="B 树与 B+树"></a>B 树与 B+树</h1><p>我们知道，mysql 的 innoDB 引擎使用的索引底层数据结构是 B+树，而 B+树是 B 树的一个变体，我们这里从 B 树开始说。</p>
+<h2 id="B-树"><a href="#B-树" class="headerlink" title="B 树"></a>B 树</h2><p>首先来个 B 树的定义：<br>B 树是一个多路查找平衡树，一个 m 阶 B 树（m 为每个节点最大的孩子节点数）满足如下要求：</p>
+<ul>
+<li>1、每个节点最多有 m-1 个关键字</li>
+<li>2、根节点最少有一个关键字</li>
+<li>3、非根节点最多有 Math.ceil(m/2) -1 个关键字</li>
+<li>4、每个节点上的关键字是按照从小到大的顺序排列，每个关键字的左子树的关键字都小于该关键字，右子树大于该关键字</li>
+<li>5、所有的叶子节点在同一层<br>B 树的结构如下：<br><img src="/images/B%E6%A0%91.png" alt="B树结构图"><br>从结构图上可以看出，B 树的节点都是一样的，每个节点存放关键字和数据。</li>
+</ul>
+<h2 id="B-树-1"><a href="#B-树-1" class="headerlink" title="B+树"></a>B+树</h2><p>B+树与 B 树类似，只是有其特殊性，B+树节点分为叶子节点和中间节点，叶子节点存放关键字和数据，中间节点只存放关键字。B+树叶子节点之间有指针进行连接，组成一个链表。<br>B+树的结构如下：<br><img src="/images/B+%E6%A0%91.png" alt="B+树结构图"></p>
+<h2 id="InnoDB-引擎选择-B-树的原因"><a href="#InnoDB-引擎选择-B-树的原因" class="headerlink" title="InnoDB 引擎选择 B+树的原因"></a>InnoDB 引擎选择 B+树的原因</h2><p>由于 B 树的节点都存放了数据，导致 B 树的每个节点占用的空间可能会很大，从而不能很好的使用 Linux 系统的文件缓存机制（操作系统的页存储机制），在查询过程中，可能会有多次磁盘的 IO 操作。而使用 B+树时，由于 B+树中间节点只有关键字，占用空间小，Linux 的一次 IO 可能会把大部分的关键字都放入到内存中，这样在查找过程中，可能会大大减少磁盘的 IO，提升查询效率。又由于 B+树的叶子节点之间组成一个链表，提升了范围查找的效率。</p>
+<h1 id="InnoDB-的索引"><a href="#InnoDB-的索引" class="headerlink" title="InnoDB 的索引"></a>InnoDB 的索引</h1><h3 id="聚集索引与辅助索引"><a href="#聚集索引与辅助索引" class="headerlink" title="聚集索引与辅助索引"></a>聚集索引与辅助索引</h3><p>mysql 的 InnoDB 引擎中的索引分为聚集索引和辅助索引。聚集索引就是我们常说的主键索引，辅助索引就是除主键索引的一般索引。辅助索引的叶子节点的数据并不是数据库的数据本身，而是主索引的索引关键字，就是说通过辅助索引查找数据，其实可能会查两个索引，先通过辅助索引获取主索引的关键字，然后通过主索引的关键字来查找具体的数据。所有索引都是 B+树结构。<br>一个例子来说明 innoDB 中的索引结构。<br>我们有如下用户表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE users(</span><br><span class="line">    id INT NOT NULL,</span><br><span class="line">    first_name VARCHAR(20) NOT NULL,</span><br><span class="line">    last_name VARCHAR(20) NOT NULL,</span><br><span class="line">    age INT NOT NULL,</span><br><span class="line">    PRIMARY KEY(id),</span><br><span class="line">    KEY(last_name, first_name, age),</span><br><span class="line">    KEY(first_name)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
 
-<p>当在执行<code>configure</code>命令时，如果有依赖包没有，会有一些提示。由于我前面编译过 jdk14 的源码，所有的相关依赖包已经装过了，所以这次编译 jdk16 时比较顺利。如果有缺包报错，缺啥包就装啥包就 OK 了。<br>接下来就是等待。当出现如下代码时，说明已经完成编译了。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Stopping sjavac server</span><br><span class="line">Finished building target &#39;images&#39; in configuration &#39;linux-x86_64-server-release&#39;</span><br></pre></td></tr></table></figure>
-
-<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>进入编译的包中<br>cd build/linux-x86_64-server-release/jdk/bin<br>执行如下命令：<br>./java -version<br>出现下面的结果，说明编译没问题。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openjdk version &quot;16-internal&quot; 2021-03-16</span><br><span class="line">OpenJDK Runtime Environment (build 16-internal+0-adhoc.fuyanzhang.jdk)</span><br><span class="line">OpenJDK 64-Bit Server VM (build 16-internal+0-adhoc.fuyanzhang.jdk, mixed mode)</span><br></pre></td></tr></table></figure>
-
-<p>也可以按照官网的验证方法，跑基础的测试用例。<br><code>make run-test-tier1</code></p>
-<p>至此，openjdk 源码编译完成了。</p>
-<h1 id="调试源码"><a href="#调试源码" class="headerlink" title="调试源码"></a>调试源码</h1><p>能编译 openjdk 源码不是我们的最终目的，我们最终的目的是通过 jdk 源码的阅读，更深入的理解 java 知识，这就需要我们搭建一套可以 debug 的 java 源码环境。这里我用 vscode 作为 ide 工具进行搭建。<br>软件准备这里就不说了。直接进入主题。<br>1、导入 jdk 源码。<br>2、点击 vscode 左侧的 run 按钮，进入 debug 设置，开始配置 debug 参数，即 launch.json。我的设置如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &#x2F;&#x2F; Use IntelliSense to learn about possible attributes.</span><br><span class="line">    &#x2F;&#x2F; Hover to view descriptions of existing attributes.</span><br><span class="line">    &#x2F;&#x2F; For more information, visit: https:&#x2F;&#x2F;go.microsoft.com&#x2F;fwlink&#x2F;?linkid&#x3D;830387</span><br><span class="line">    &quot;version&quot;: &quot;0.2.0&quot;,</span><br><span class="line">    &quot;configurations&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;name&quot;: &quot;jdk16 debug&quot;,</span><br><span class="line">            &quot;type&quot;: &quot;cppdbg&quot;,</span><br><span class="line">            &quot;request&quot;: &quot;launch&quot;,</span><br><span class="line">            &quot;program&quot;: &quot;&#x2F;home&#x2F;fuyanzhang&#x2F;xiaomi&#x2F;study&#x2F;java&#x2F;jdk&#x2F;build&#x2F;linux-x86_64-server-release&#x2F;jdk&#x2F;bin&#x2F;java&quot;,</span><br><span class="line">            &quot;args&quot;: [&quot;Test&quot;],</span><br><span class="line">            &quot;stopAtEntry&quot;: false,</span><br><span class="line">            &quot;cwd&quot;: &quot;$&#123;workspaceFolder&#125;&quot;,</span><br><span class="line">            &quot;environment&quot;: [</span><br><span class="line">                &#123;&quot;name&quot;:&quot;JAVA_HOME&quot;,&quot;value&quot;:&quot;&#x2F;home&#x2F;fuyanzhang&#x2F;xiaomi&#x2F;study&#x2F;java&#x2F;jdk&#x2F;build&#x2F;linux-x86_64-server-release&#x2F;jdk&#x2F;&quot;&#125;,</span><br><span class="line">                &#123;&quot;name&quot;:&quot;CLASSPATH&quot;,&quot;value&quot;:&quot;.:&#x2F;home&#x2F;fuyanzhang&#x2F;xiaomi&#x2F;study&#x2F;java&#x2F;jdk&#x2F;test&#x2F;mytest&quot;&#125;</span><br><span class="line">            ],</span><br><span class="line">            &quot;externalConsole&quot;: false,</span><br><span class="line">            &quot;MIMode&quot;: &quot;gdb&quot;,</span><br><span class="line">            &quot;setupCommands&quot;: [</span><br><span class="line">                &#123;</span><br><span class="line">                    &quot;description&quot;: &quot;为 gdb 启用整齐打印&quot;,</span><br><span class="line">                    &quot;text&quot;: &quot;-enable-pretty-printing&quot;,</span><br><span class="line">                    &quot;ignoreFailures&quot;: true</span><br><span class="line">                &#125;</span><br><span class="line">            ]</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>简单介绍一下上面的参数意思：<br>program：配置 java 的入口，即我们平时使用的 java 命令。<br>args： java 命令的参数，即我们自己写的业务代码入口类，也就是 main 方法所在的类。这里我的类名是 Test,主要实现的是打印一个<code>hello world</code><br>environment:设置 JAVA_HOME 及 args 中类所在的位置。<br>其他的参数使用默认值即可。<br>如果保存之后，没有出现 debug 窗口，则需要 reload 一下 C/C++插件。<br>正常情况下会出现如图的窗口：<br><img src="/images/debug_openjdk16.png" alt="debug窗口"><br>点击<code>jdk16 debug</code>边上的三角，就开始 debug 了。<br>随便在 java 源码中打几个端点，执行 debug，就能看到如图的 debug 信息了。<br><img src="/images/debug_openjdk_ing.png" alt="debug窗口"><br>到此，源码阅读环境搭建就 OK 了，可徜徉在 java 源码的海洋里了。have fun ！！！</p>
+<p>其聚集索引结构如下：<br><img src="/images/%E8%81%9A%E9%9B%86%E7%B4%A2%E5%BC%95.png" alt="聚集索引"><br>辅助索引跟聚集索引结构相同，不同之处在于，聚集索引叶子节点存放的是真实的数据，而辅助索引叶子节点存放的是聚集索引的的关键字。</p>
+<h3 id="联合索引"><a href="#联合索引" class="headerlink" title="联合索引"></a>联合索引</h3><p>如上建表语句中<code>KEY(last_name, first_name, age)</code>就是一个联合索引。那么联合索引的结构是怎么样的呢？<br>联合索引也是辅助索引的一种，联合索引的中间节点存放的是各个关键字的合集，上面的例子中，中间节点存放的是<code>last_name</code>,<code>first_name</code>,<code>age</code>的值，其中<code>last_name</code>是按照顺序排列的，其他的只有<code>last_name</code>相同时，才会有顺序即小范围有序，这就解释了索引的最左匹配规则。叶子节点与辅助索引一样，存放的是聚集索引的关键字。</p>
+<h3 id="回表"><a href="#回表" class="headerlink" title="回表"></a>回表</h3><p>回表的意思通俗的讲就是一次索引查询不能把所有的信息全部查到，需要回到聚集索引中查询表的其他的数据，相当于多了一次聚集索引的查询，可能会多一次 IO 操作。<br>引用网上的一个图：<br><img src="/images/%E5%9B%9E%E8%A1%A8.png" alt="回表"><br>图中红色路径就是一次回表查询。<br>如果一次索引查询就能把所有的信息查到，就无需回表，减少了磁盘 IO。</p>
+<h1 id="后面"><a href="#后面" class="headerlink" title="后面"></a>后面</h1><p>至此，索引优化相关的基础知识差不多就覆盖到了，优化的主要思路就是尽量减少磁盘的扫描。</p>
 
       
     </div>
@@ -387,9 +392,11 @@
       
         <div class="post-tags">
           
-            <a href="/tags/Java/" rel="tag"># Java</a>
+            <a href="/tags/DB/" rel="tag"># DB</a>
           
-            <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+            <a href="/tags/mysql/" rel="tag"># mysql</a>
+          
+            <a href="/tags/%E7%B4%A2%E5%BC%95/" rel="tag"># 索引</a>
           
         </div>
       
@@ -402,8 +409,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2020/11/10/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="next" title="代码整洁之道读书笔记">
-                <i class="fa fa-chevron-left"></i> 代码整洁之道读书笔记
+              <a href="/2020/11/18/HotSpot%E6%BA%90%E7%A0%81%E8%B0%83%E8%AF%95/" rel="next" title="HotSpot源码调试">
+                <i class="fa fa-chevron-left"></i> HotSpot源码调试
               </a>
             
           </div>
@@ -411,10 +418,6 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2020/12/11/mysql%E7%B4%A2%E5%BC%95%E7%BB%93%E6%9E%84/" rel="prev" title="mysql索引结构">
-                mysql索引结构 <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -562,7 +565,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#编译"><span class="nav-number">1.</span> <span class="nav-text">编译</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#下载代码及相关依赖"><span class="nav-number">1.0.1.</span> <span class="nav-text">下载代码及相关依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#编译-1"><span class="nav-number">1.0.2.</span> <span class="nav-text">编译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#验证"><span class="nav-number">1.0.3.</span> <span class="nav-text">验证</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#调试源码"><span class="nav-number">2.</span> <span class="nav-text">调试源码</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#B-树与-B-树"><span class="nav-number">1.</span> <span class="nav-text">B 树与 B+树</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#B-树"><span class="nav-number">1.1.</span> <span class="nav-text">B 树</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#B-树-1"><span class="nav-number">1.2.</span> <span class="nav-text">B+树</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#InnoDB-引擎选择-B-树的原因"><span class="nav-number">1.3.</span> <span class="nav-text">InnoDB 引擎选择 B+树的原因</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#InnoDB-的索引"><span class="nav-number">2.</span> <span class="nav-text">InnoDB 的索引</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#聚集索引与辅助索引"><span class="nav-number">2.0.1.</span> <span class="nav-text">聚集索引与辅助索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#联合索引"><span class="nav-number">2.0.2.</span> <span class="nav-text">联合索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#回表"><span class="nav-number">2.0.3.</span> <span class="nav-text">回表</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#后面"><span class="nav-number">3.</span> <span class="nav-text">后面</span></a></li></ol></div>
             
 
           </div>
