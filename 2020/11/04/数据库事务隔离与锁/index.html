@@ -89,7 +89,7 @@
 <meta property="og:image" content="http://fuyanzhang.github.io/images/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB.png">
 <meta property="og:image" content="http://fuyanzhang.github.io/images/B+tree.png">
 <meta property="article:published_time" content="2020-11-04T11:46:21.000Z">
-<meta property="article:modified_time" content="2020-12-15T06:51:47.063Z">
+<meta property="article:modified_time" content="2021-01-07T03:12:52.215Z">
 <meta property="article:author" content="yanzhang">
 <meta property="article:tag" content="DB">
 <meta property="article:tag" content="mysql">
@@ -357,6 +357,12 @@
         <p>关系型数据库中，事务是很重要的一个知识点，这里通过分析 MySQL 中 InnerDB 引擎的加锁机制来搞清事务处理过程中数据库锁是如何工作的。</p>
 <a id="more"></a>
 
+<h2 id="数据库的-ACID"><a href="#数据库的-ACID" class="headerlink" title="数据库的 ACID"></a>数据库的 ACID</h2><p>数据库中 ACID 主要是原子性（A），一致性（C），隔离性（I），持久性（D），这些都是 DBMS 的事务特性。</p>
+<h3 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h3><p>原子性是指数据库事务是一个不可分割的单元，要么成功，要么失败，没有中间结果。<br>如 A 向 B 转账，要么成功，要么失败，不存在 A 扣款成功，B 入账失败的情况</p>
+<h3 id="一致性"><a href="#一致性" class="headerlink" title="一致性"></a>一致性</h3><p>一致性是指在事务开始之前和事务结束以后，数据库的完整性约束没有被破坏。这是说数据库事务不能破坏关系数据的完整性以及业务逻辑上的一致性。</p>
+<p>如 A 给 B 转账，不论转账的事务操作是否成功，其两者的存款总额不变（这是业务逻辑的一致性，至于数据库关系约束的完整性就更好理解了）。</p>
+<h3 id="隔离性"><a href="#隔离性" class="headerlink" title="隔离性"></a>隔离性</h3><p>多个事务并发访问时，事务之间是隔离的，一个事务不应该影响其它事务运行效果。</p>
+<h3 id="持久性"><a href="#持久性" class="headerlink" title="持久性"></a>持久性</h3><p>持久性表示在事务完成以后，该事务所对数据库所作的更改便持久的保存在数据库之中，并不会被回滚。</p>
 <h2 id="锁"><a href="#锁" class="headerlink" title="锁"></a>锁</h2><p>这里引用网上一张图来罗列出数据库中常见的锁。<br><img src="/images/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E9%94%81.png" alt="数据库中的锁"><br>一般高并发应用中，为了防止死锁发生，使用一次封锁法，即在方法的开始阶段，将所有用到的资源锁定，方法运行完成之后，再一次全部释放<code>想想我们在代码中使用的锁</code>。但在数据库中，我们无法知道需要用到哪些数据，一次封锁法就不太适合了。<br>当前的数据库系统通常遵循的是两阶段锁。即将一个数据库事务分为加锁阶段和释放锁阶段。</p>
 <ul>
 <li>加锁阶段： 当读数据时，加共享锁（S 锁），其他事务可以继续加共享锁。写数据时，加排他锁，即其他事务不能加任何类型的锁。加锁不成功，则事务等待，知道能够获取到锁。</li>
@@ -587,7 +593,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#锁"><span class="nav-number">1.</span> <span class="nav-text">锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务隔离级别"><span class="nav-number">2.</span> <span class="nav-text">事务隔离级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GAP-锁"><span class="nav-number">3.</span> <span class="nav-text">GAP 锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MVCC-机制"><span class="nav-number">4.</span> <span class="nav-text">MVCC 机制</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据库的-ACID"><span class="nav-number">1.</span> <span class="nav-text">数据库的 ACID</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#原子性"><span class="nav-number">1.1.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一致性"><span class="nav-number">1.2.</span> <span class="nav-text">一致性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#隔离性"><span class="nav-number">1.3.</span> <span class="nav-text">隔离性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#持久性"><span class="nav-number">1.4.</span> <span class="nav-text">持久性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锁"><span class="nav-number">2.</span> <span class="nav-text">锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#事务隔离级别"><span class="nav-number">3.</span> <span class="nav-text">事务隔离级别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GAP-锁"><span class="nav-number">4.</span> <span class="nav-text">GAP 锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MVCC-机制"><span class="nav-number">5.</span> <span class="nav-text">MVCC 机制</span></a></li></ol></div>
             
 
           </div>
@@ -607,7 +613,7 @@
 
     <footer id="footer" class="footer">
       <div class="footer-inner">
-        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>
